@@ -31,3 +31,10 @@ public:
 	SkyboxShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
 	~SkyboxShader() override = default;
 };
+
+class DetailShader : public Shader
+{
+public:
+	DetailShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
+	~DetailShader() override = default;
+};

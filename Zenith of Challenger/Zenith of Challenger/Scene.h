@@ -30,12 +30,23 @@ public:
 	void KeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 private:
+	inline void BuildShaders(const ComPtr<ID3D12Device>& device,
+		const ComPtr<ID3D12GraphicsCommandList>& commandList,
+		const ComPtr<ID3D12RootSignature>& rootSignature);
+	inline void BuildMeshes(const ComPtr<ID3D12Device>& device,
+		const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	inline void BuildTextures(const ComPtr<ID3D12Device>& device,
+		const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	inline void BuildObjects();
+
+private:
 	unordered_map<string, shared_ptr<Shader>> m_shaders;
-	unordered_map<string, shared_ptr<Mesh>> m_meshes;
+	unordered_map<string, shared_ptr<MeshBase>> m_meshes;
 	unordered_map<string, shared_ptr<Texture>> m_textures;
 
 	shared_ptr<Camera> m_camera;
 	shared_ptr<Player> m_player;
 	vector<shared_ptr<GameObject>> m_objects;
 	shared_ptr<GameObject> m_skybox;
+	shared_ptr<GameObject> m_terrain;
 };

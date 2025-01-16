@@ -4,335 +4,83 @@
 
 #include "mesh.h"
 
-void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void MeshBase::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	commandList->DrawInstanced(m_vertices, 1, 0, 0);
 }
 
-void Mesh::ReleaseUploadBuffer()
+void MeshBase::ReleaseUploadBuffer()
 {
 	if (m_vertexUploadBuffer) m_vertexUploadBuffer.Reset();
 }
 
-void IndexMesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+TerrainMesh::TerrainMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName)
 {
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	commandList->IASetIndexBuffer(&m_indexBufferView);
-	commandList->DrawIndexedInstanced(m_indices, 1, 0, 0, 0);
+	LoadMesh(device, commandList, fileName);
 }
 
-void IndexMesh::ReleaseUploadBuffer()
+void TerrainMesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName)
 {
-	Mesh::ReleaseUploadBuffer();
-	if (m_indexUploadBuffer) m_indexUploadBuffer.Reset();
+    // Open the .raw file
+    ifstream in(fileName, ios::binary);
+    if (!in.is_open()) {
+        throw runtime_error("Failed to open heightmap file.");
+    }
+
+    // Determine the dimensions of the heightmap
+    size_t size;
+    in.seekg(0, ios::end);
+    size = static_cast<size_t>(in.tellg());
+    in.seekg(0, ios::beg);
+
+    int length = static_cast<int>(sqrt(size)); // Assuming square dimensions
+    if (length * length != size) {
+        throw runtime_error("Heightmap file is not a perfect square.");
+    }
+
+    int middle = length / 2;
+
+    // Resize the height vector
+    m_height.resize(length, vector<BYTE>(length));
+
+    // Read the heightmap data
+    for (int z = 0; z < length; ++z) {
+        in.read(reinterpret_cast<char*>(m_height[z].data()), length * sizeof(BYTE));
+    }
+
+    // Close the file
+    in.close();
+
+    // Vertex creation
+    const float delta = 1.f / static_cast<float>(length);
+    vector<DetailVertex> vertices;
+
+    for (int z = 0; z < length - 1; ++z) {
+        for (int x = 0; x < length - 1; ++x) {
+            float nx = static_cast<float>(x - middle);
+            float nz = static_cast<float>(z - middle);
+            float dx = static_cast<float>(x) * delta;
+            float dz = 1.f - static_cast<float>(z) * delta;
+
+            vertices.emplace_back(XMFLOAT3{ nx, static_cast<float>(m_height[z][x]), nz },
+                XMFLOAT2{ dx, dz }, XMFLOAT2{ 0.f, 1.f });
+            vertices.emplace_back(XMFLOAT3{ nx, static_cast<float>(m_height[z + 1][x]), nz + 1 },
+                XMFLOAT2{ dx, dz - delta }, XMFLOAT2{ 0.f, 0.f });
+            vertices.emplace_back(XMFLOAT3{ nx + 1, static_cast<float>(m_height[z + 1][x + 1]), nz + 1 },
+                XMFLOAT2{ dx + delta, dz - delta }, XMFLOAT2{ 1.f, 0.f });
+
+            vertices.emplace_back(XMFLOAT3{ nx, static_cast<float>(m_height[z][x]), nz },
+                XMFLOAT2{ dx, dz }, XMFLOAT2{ 0.f, 1.f });
+            vertices.emplace_back(XMFLOAT3{ nx + 1, static_cast<float>(m_height[z + 1][x + 1]), nz + 1 },
+                XMFLOAT2{ dx + delta, dz - delta }, XMFLOAT2{ 1.f, 0.f });
+            vertices.emplace_back(XMFLOAT3{ nx + 1, static_cast<float>(m_height[z][x + 1]), nz },
+                XMFLOAT2{ dx + delta, dz }, XMFLOAT2{ 1.f, 1.f });
+        }
+    }
+
+    // Create the vertex buffer
+    CreateVertexBuffer(device, commandList, vertices);
 }
 
-CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	vector<Vertex> vertices;
-	const XMFLOAT3 LEFTDOWNFRONT = { -1.f, -1.f, -1.f };
-	const XMFLOAT3 LEFTDOWNBACK = { -1.f, -1.f, +1.f };
-	const XMFLOAT3 LEFTUPFRONT = { -1.f, +1.f, -1.f };
-	const XMFLOAT3 LEFTUPBACK = { -1.f, +1.f, +1.f };
-	const XMFLOAT3 RIGHTDOWNFRONT = { +1.f, -1.f, -1.f };
-	const XMFLOAT3 RIGHTDOWNBACK = { +1.f, -1.f, +1.f };
-	const XMFLOAT3 RIGHTUPFRONT = { +1.f, +1.f, -1.f };
-	const XMFLOAT3 RIGHTUPBACK = { +1.f, +1.f, +1.f };
-
-	// Front
-	vertices.emplace_back(LEFTUPFRONT, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(RIGHTUPFRONT, XMFLOAT2{ 1.0f, 0.0f });
-	vertices.emplace_back(RIGHTDOWNFRONT, XMFLOAT2{ 1.0f, 1.0f });
-
-	vertices.emplace_back(LEFTUPFRONT, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(RIGHTDOWNFRONT, XMFLOAT2{ 1.0f, 1.0f });
-	vertices.emplace_back(LEFTDOWNFRONT, XMFLOAT2{ 0.0f, 1.0f });
-
-	// Up
-	vertices.emplace_back(LEFTUPBACK, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(RIGHTUPBACK, XMFLOAT2{ 1.0f, 0.0f });
-	vertices.emplace_back(RIGHTUPFRONT, XMFLOAT2{ 1.0f, 1.0f });
-
-	vertices.emplace_back(LEFTUPBACK, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(RIGHTUPFRONT, XMFLOAT2{ 1.0f, 1.0f });
-	vertices.emplace_back(LEFTUPFRONT, XMFLOAT2{ 0.0f, 1.0f });
-
-	// Back
-	vertices.emplace_back(LEFTDOWNBACK, XMFLOAT2{ 1.0f, 1.0f });
-	vertices.emplace_back(RIGHTDOWNBACK, XMFLOAT2{ 0.0f, 1.0f });
-	vertices.emplace_back(RIGHTUPBACK, XMFLOAT2{ 0.0f, 0.0f });
-
-	vertices.emplace_back(LEFTDOWNBACK, XMFLOAT2{ 1.0f, 1.0f });
-	vertices.emplace_back(RIGHTUPBACK, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(LEFTUPBACK, XMFLOAT2{ 1.0f, 0.0f });
-
-	// Down
-	vertices.emplace_back(LEFTDOWNFRONT, XMFLOAT2{ 1.0f, 1.0f });
-	vertices.emplace_back(RIGHTDOWNFRONT, XMFLOAT2{ 0.0f, 1.0f });
-	vertices.emplace_back(RIGHTDOWNBACK, XMFLOAT2{ 0.0f, 0.0f });
-
-	vertices.emplace_back(LEFTDOWNFRONT, XMFLOAT2{ 1.0f, 1.0f });
-	vertices.emplace_back(RIGHTDOWNBACK, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(LEFTDOWNBACK, XMFLOAT2{ 1.0f, 0.0f });
-
-	// Left
-	vertices.emplace_back(LEFTUPBACK, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(LEFTUPFRONT, XMFLOAT2{ 1.0f, 0.0f });
-	vertices.emplace_back(LEFTDOWNFRONT, XMFLOAT2{ 1.0f, 1.0f });
-
-	vertices.emplace_back(LEFTUPBACK, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(LEFTDOWNFRONT, XMFLOAT2{ 1.0f, 1.0f });
-	vertices.emplace_back(LEFTDOWNBACK, XMFLOAT2{ 0.0f, 1.0f });
-
-	// Right													 
-	vertices.emplace_back(RIGHTUPFRONT, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(RIGHTUPBACK, XMFLOAT2{ 1.0f, 0.0f });
-	vertices.emplace_back(RIGHTDOWNBACK, XMFLOAT2{ 1.0f, 1.0f });
-
-	vertices.emplace_back(RIGHTUPFRONT, XMFLOAT2{ 0.0f, 0.0f });
-	vertices.emplace_back(RIGHTDOWNBACK, XMFLOAT2{ 1.0f, 1.0f });
-	vertices.emplace_back(RIGHTDOWNFRONT, XMFLOAT2{ 0.0f, 1.0f });
-
-	m_vertices = static_cast<UINT>(vertices.size());
-	const UINT vertexBufferSize = m_vertices * sizeof(Vertex);
-
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&m_vertexBuffer));
-
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&m_vertexUploadBuffer));
-
-	D3D12_SUBRESOURCE_DATA vertexData{};
-	vertexData.pData = vertices.data();
-	vertexData.RowPitch = vertexBufferSize;
-	vertexData.SlicePitch = vertexData.RowPitch;
-	UpdateSubresources<1>(commandList.Get(),
-		m_vertexBuffer.Get(), m_vertexUploadBuffer.Get(), 0, 0, 1, &vertexData);
-
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
-
-	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-	m_vertexBufferView.SizeInBytes = vertexBufferSize;
-	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-}
-
-CubeIndexMesh::CubeIndexMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	vector<Vertex> vertices;
-
-	const XMFLOAT3 LEFTDOWNFRONT = { -1.f, -1.f, -1.f };
-	const XMFLOAT3 LEFTDOWNBACK = { -1.f, -1.f, +1.f };
-	const XMFLOAT3 LEFTUPFRONT = { -1.f, +1.f, -1.f };
-	const XMFLOAT3 LEFTUPBACK = { -1.f, +1.f, +1.f };
-	const XMFLOAT3 RIGHTDOWNFRONT = { +1.f, -1.f, -1.f };
-	const XMFLOAT3 RIGHTDOWNBACK = { +1.f, -1.f, +1.f };
-	const XMFLOAT3 RIGHTUPFRONT = { +1.f, +1.f, -1.f };
-	const XMFLOAT3 RIGHTUPBACK = { +1.f, +1.f, +1.f };
-
-	vertices.emplace_back(LEFTUPBACK, XMFLOAT4{ 1.0f, 1.0f, 0.0f, 1.0f });
-	vertices.emplace_back(RIGHTUPBACK, XMFLOAT4{ 0.0f, 0.5f, 0.5f, 1.0f });
-	vertices.emplace_back(RIGHTUPFRONT, XMFLOAT4{ 0.5f, 0.5f, 0.0f, 1.0f });
-	vertices.emplace_back(LEFTUPFRONT, XMFLOAT4{ 0.0f, 0.0f, 1.0f, 1.0f });
-
-	vertices.emplace_back(LEFTDOWNBACK, XMFLOAT4{ 0.0f, 1.0f, 0.0f, 1.0f });
-	vertices.emplace_back(RIGHTDOWNBACK, XMFLOAT4{ 0.0f, 1.0f, 1.0f, 1.0f });
-	vertices.emplace_back(RIGHTDOWNFRONT, XMFLOAT4{ 1.0f, 0.0f, 1.0f, 1.0f });
-	vertices.emplace_back(LEFTDOWNFRONT, XMFLOAT4{ 1.0f, 0.0f, 0.0f, 1.0f });
-
-	vector<UINT> indices;
-	indices.push_back(0); indices.push_back(1); indices.push_back(2);
-	indices.push_back(0); indices.push_back(2); indices.push_back(3);
-
-	indices.push_back(3); indices.push_back(2); indices.push_back(6);
-	indices.push_back(3); indices.push_back(6); indices.push_back(7);
-
-	indices.push_back(7); indices.push_back(6); indices.push_back(5);
-	indices.push_back(7); indices.push_back(5); indices.push_back(4);
-
-	indices.push_back(1); indices.push_back(0); indices.push_back(4);
-	indices.push_back(1); indices.push_back(4); indices.push_back(5);
-
-	indices.push_back(0); indices.push_back(3); indices.push_back(7);
-	indices.push_back(0); indices.push_back(7); indices.push_back(4);
-
-	indices.push_back(2); indices.push_back(1); indices.push_back(5);
-	indices.push_back(2); indices.push_back(5); indices.push_back(6);
-
-	m_vertices = static_cast<UINT>(vertices.size());
-	const UINT vertexBufferSize = m_vertices * sizeof(Vertex);
-
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&m_vertexBuffer));
-
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&m_vertexUploadBuffer));
-
-	D3D12_SUBRESOURCE_DATA vertexData{};
-	vertexData.pData = vertices.data();
-	vertexData.RowPitch = vertexBufferSize;
-	vertexData.SlicePitch = vertexData.RowPitch;
-	UpdateSubresources<1>(commandList.Get(), m_vertexBuffer.Get(), m_vertexUploadBuffer.Get(), 0, 0, 1, &vertexData);
-
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
-
-	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-	m_vertexBufferView.SizeInBytes = vertexBufferSize;
-	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-
-	m_indices = static_cast<UINT>(indices.size());
-	const UINT indexBufferSize = m_indices * sizeof(UINT);
-
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		NULL,
-		IID_PPV_ARGS(&m_indexBuffer));
-
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		NULL,
-		IID_PPV_ARGS(&m_indexUploadBuffer));
-
-	D3D12_SUBRESOURCE_DATA indexData{};
-	indexData.pData = indices.data();
-	indexData.RowPitch = indexBufferSize;
-	indexData.SlicePitch = indexData.RowPitch;
-	UpdateSubresources<1>(commandList.Get(), m_indexBuffer.Get(), m_indexUploadBuffer.Get(), 0, 0, 1, &indexData);
-
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_indexBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
-
-	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-	m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-	m_indexBufferView.SizeInBytes = indexBufferSize;
-}
-
-SkyboxMesh::SkyboxMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	vector<Vertex> vertices;
-	const XMFLOAT3 LEFTDOWNFRONT = { -1.f, -1.f, -1.f };
-	const XMFLOAT3 LEFTDOWNBACK = { -1.f, -1.f, +1.f };
-	const XMFLOAT3 LEFTUPFRONT = { -1.f, +1.f, -1.f };
-	const XMFLOAT3 LEFTUPBACK = { -1.f, +1.f, +1.f };
-	const XMFLOAT3 RIGHTDOWNFRONT = { +1.f, -1.f, -1.f };
-	const XMFLOAT3 RIGHTDOWNBACK = { +1.f, -1.f, +1.f };
-	const XMFLOAT3 RIGHTUPFRONT = { +1.f, +1.f, -1.f };
-	const XMFLOAT3 RIGHTUPBACK = { +1.f, +1.f, +1.f };
-
-	// Front
-	vertices.emplace_back(LEFTUPFRONT);
-	vertices.emplace_back(RIGHTUPFRONT);
-	vertices.emplace_back(RIGHTDOWNFRONT);
-
-	vertices.emplace_back(LEFTUPFRONT);
-	vertices.emplace_back(RIGHTDOWNFRONT);
-	vertices.emplace_back(LEFTDOWNFRONT);
-
-	// Up
-	vertices.emplace_back(LEFTUPBACK);
-	vertices.emplace_back(RIGHTUPBACK);
-	vertices.emplace_back(RIGHTUPFRONT);
-
-	vertices.emplace_back(LEFTUPBACK);
-	vertices.emplace_back(RIGHTUPFRONT);
-	vertices.emplace_back(LEFTUPFRONT);
-
-	// Back
-	vertices.emplace_back(LEFTDOWNBACK);
-	vertices.emplace_back(RIGHTDOWNBACK);
-	vertices.emplace_back(RIGHTUPBACK);
-
-	vertices.emplace_back(LEFTDOWNBACK);
-	vertices.emplace_back(RIGHTUPBACK);
-	vertices.emplace_back(LEFTUPBACK);
-
-	// Down
-	vertices.emplace_back(LEFTDOWNFRONT);
-	vertices.emplace_back(RIGHTDOWNFRONT);
-	vertices.emplace_back(RIGHTDOWNBACK);
-
-	vertices.emplace_back(LEFTDOWNFRONT);
-	vertices.emplace_back(RIGHTDOWNBACK);
-	vertices.emplace_back(LEFTDOWNBACK);
-
-	// Left
-	vertices.emplace_back(LEFTUPBACK);
-	vertices.emplace_back(LEFTUPFRONT);
-	vertices.emplace_back(LEFTDOWNFRONT);
-
-	vertices.emplace_back(LEFTUPBACK);
-	vertices.emplace_back(LEFTDOWNFRONT);
-	vertices.emplace_back(LEFTDOWNBACK);
-
-	// Right													 
-	vertices.emplace_back(RIGHTUPFRONT);
-	vertices.emplace_back(RIGHTUPBACK);
-	vertices.emplace_back(RIGHTDOWNBACK);
-
-	vertices.emplace_back(RIGHTUPFRONT);
-	vertices.emplace_back(RIGHTDOWNBACK);
-	vertices.emplace_back(RIGHTDOWNFRONT);
-
-	m_vertices = static_cast<UINT>(vertices.size());
-	const UINT vertexBufferSize = m_vertices * sizeof(Vertex);
-
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&m_vertexBuffer));
-
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&m_vertexUploadBuffer));
-
-	D3D12_SUBRESOURCE_DATA vertexData{};
-	vertexData.pData = vertices.data();
-	vertexData.RowPitch = vertexBufferSize;
-	vertexData.SlicePitch = vertexData.RowPitch;
-	UpdateSubresources<1>(commandList.Get(),
-		m_vertexBuffer.Get(), m_vertexUploadBuffer.Get(), 0, 0, 1, &vertexData);
-
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
-
-	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-	m_vertexBufferView.SizeInBytes = vertexBufferSize;
-	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-}

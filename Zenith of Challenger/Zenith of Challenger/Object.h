@@ -19,20 +19,27 @@ public:
 	void Transform(XMFLOAT3 shift);
 	void Rotate(FLOAT pitch, FLOAT yaw, FLOAT roll);
 
-	void SetMesh(const shared_ptr<Mesh>& mesh);
+	void SetMesh(const shared_ptr<MeshBase>& mesh);
 	void SetTexture(const shared_ptr<Texture>& texture);
 
 	void SetPosition(XMFLOAT3 position);
 	XMFLOAT3 GetPosition() const;
 
+	void SetScale(XMFLOAT3 scale);
+	XMFLOAT3 GetScale() const;   
+
 protected:
+	void UpdateWorldMatrix();
+
 	XMFLOAT4X4			m_worldMatrix;
 
 	XMFLOAT3			m_right;
 	XMFLOAT3			m_up;
 	XMFLOAT3			m_front;
 
-	shared_ptr<Mesh>	m_mesh;
+	XMFLOAT3             m_scale;
+
+	shared_ptr<MeshBase>	m_mesh;
 	shared_ptr<Texture>	m_texture;
 };
 

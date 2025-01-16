@@ -43,7 +43,7 @@ void GameObject::Rotate(FLOAT pitch, FLOAT yaw, FLOAT roll)
 	XMStoreFloat3(&m_front, XMVector3TransformNormal(XMLoadFloat3(&m_front), rotate));
 }
 
-void GameObject::SetMesh(const shared_ptr<Mesh>& mesh)
+void GameObject::SetMesh(const shared_ptr<MeshBase>& mesh)
 {
 	m_mesh = mesh;
 }
@@ -63,6 +63,27 @@ void GameObject::SetPosition(XMFLOAT3 position)
 XMFLOAT3 GameObject::GetPosition() const
 {
 	return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 };
+}
+
+void GameObject::SetScale(XMFLOAT3 scale)
+{
+	m_scale = scale;
+	UpdateWorldMatrix(); // Ensure the world matrix is updated when scale changes
+}
+
+XMFLOAT3 GameObject::GetScale() const
+{
+	return XMFLOAT3();
+}
+
+void GameObject::UpdateWorldMatrix()
+{
+	XMMATRIX scaleMatrix = XMMatrixScaling(m_scale.x, m_scale.y, m_scale.z);
+	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.0f);
+	XMMATRIX translationMatrix = XMMatrixTranslation(m_right.x, m_up.y, m_front.z); 
+
+	XMMATRIX worldMatrix = scaleMatrix * rotationMatrix * translationMatrix;
+	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
 }
 
 RotatingObject::RotatingObject() : GameObject()
