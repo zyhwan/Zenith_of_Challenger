@@ -85,7 +85,9 @@ private:
 
 	CGameTimer							m_GameTimer;
 	POINT								m_ptOldCursorPos;
-	_TCHAR								m_pszFrameRate[50];
+
+	_TCHAR								m_pszBaseTitle[256];// 원래 창 제목
+	_TCHAR								m_pszFrameRate[50];// FPS 표시용
 
 	unique_ptr<Scene>					m_scene;
 };

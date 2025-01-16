@@ -73,7 +73,7 @@ void GameObject::SetScale(XMFLOAT3 scale)
 
 XMFLOAT3 GameObject::GetScale() const
 {
-	return XMFLOAT3();
+	return m_scale;
 }
 
 void GameObject::UpdateWorldMatrix()

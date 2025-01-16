@@ -25,8 +25,8 @@ public:
 	void SetPosition(XMFLOAT3 position);
 	XMFLOAT3 GetPosition() const;
 
-	void SetScale(XMFLOAT3 scale);
-	XMFLOAT3 GetScale() const;   
+	virtual void SetScale(XMFLOAT3 scale);
+	virtual XMFLOAT3 GetScale() const;
 
 protected:
 	void UpdateWorldMatrix();

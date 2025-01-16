@@ -25,6 +25,9 @@ void CGameFramework::OnCreate(HINSTANCE hInstance, HWND hMainWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hMainWnd;
 
+	// 기본 창 제목 저장
+	GetWindowText(m_hWnd, m_pszBaseTitle, sizeof(m_pszBaseTitle) / sizeof(TCHAR));
+
 	InitDirect3D();
 	BuildObjects();
 }
@@ -37,6 +40,12 @@ void CGameFramework::OnDestroy()
 void CGameFramework::FrameAdvance()
 {
 	m_GameTimer.Tick();
+
+	// FPS 계산 및 제목 업데이트
+	UINT fps = m_GameTimer.GetFPS();
+	_stprintf_s(m_pszFrameRate, _T("%s - FPS: %u"), m_pszBaseTitle, fps);
+	SetWindowText(m_hWnd, m_pszFrameRate); // 제목 업데이트
+
 	Update();
 	Render();
 }

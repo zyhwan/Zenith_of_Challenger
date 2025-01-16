@@ -11,25 +11,40 @@ Scene::Scene()
 
 void Scene::MouseEvent(HWND hWnd, FLOAT timeElapsed)
 {
-	SetCursor(NULL);
-	RECT windowRect;
-	GetWindowRect(hWnd, &windowRect);
+	static bool isDragging = false; // 드래깅 상태를 추적
+	static POINT lastMousePosition; // 마지막 마우스 위치
 
-	POINT lastMousePosition{
-		windowRect.left + static_cast<LONG>(gGameFramework->GetWindowWidth() / 2),
-		windowRect.top + static_cast<LONG>(gGameFramework->GetWindowHeight() / 2) };
-	POINT mousePosition;
-	GetCursorPos(&mousePosition);
+	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {// 좌클릭 상태 확인
+		if (!isDragging) // 드래깅 시작
+		{
+			isDragging = true;
 
-	float dx = XMConvertToRadians(-0.15f * static_cast<FLOAT>(mousePosition.x - lastMousePosition.x));
-	float dy = XMConvertToRadians(-0.15f * static_cast<FLOAT>(mousePosition.y - lastMousePosition.y));
+			// 현재 마우스 위치 저장
+			GetCursorPos(&lastMousePosition);
+		}
 
-	if (m_camera) {
-		m_camera->RotateYaw(dx);
-		m_camera->RotatePitch(dy);
+		POINT currentMousePosition;
+		GetCursorPos(&currentMousePosition);
+
+		// 마우스 이동 거리 계산
+		float dx = XMConvertToRadians(-0.15f * static_cast<FLOAT>(currentMousePosition.x - lastMousePosition.x));
+		float dy = XMConvertToRadians(-0.15f * static_cast<FLOAT>(currentMousePosition.y - lastMousePosition.y));
+
+		// 카메라 회전
+		if (m_camera)
+		{
+			m_camera->RotateYaw(dx);
+			m_camera->RotatePitch(dy);
+		}
+
+		// 마지막 마우스 위치 갱신
+		lastMousePosition = currentMousePosition;
 	}
-	SetCursorPos(lastMousePosition.x, lastMousePosition.y);
+	else {
+		isDragging = false; // 드래깅 상태 해제
+	}
 
+	// 다른 마우스 관련 이벤트 처리
 	m_player->MouseEvent(timeElapsed);
 }
 
@@ -129,6 +144,7 @@ inline void Scene::BuildObjects()
 	m_player = make_shared<Player>();
 	m_player->SetMesh(m_meshes["CUBE"]);
 	m_player->SetTexture(m_textures["PLAYER"]);
+	m_player->SetScale(XMFLOAT3{ 1.f, 1.5f, 1.f });
 	m_player->SetPosition(XMFLOAT3{ 0.f, 0.f, 0.f });
 
 	for (int x = -15; x <= 15; x += 5) {
@@ -158,7 +174,7 @@ inline void Scene::BuildObjects()
 	m_terrain->SetMesh(m_meshes["TERRAIN"]);
 	m_terrain->SetTexture(m_textures["TERRAIN"]);
 	m_terrain->SetScale(XMFLOAT3{ 5.f, 0.5f, 5.f });
-	m_terrain->SetPosition(XMFLOAT3{ 0.f, -50.f, 0.f });
+	m_terrain->SetPosition(XMFLOAT3{ 0.f, -100.f, 0.f });
 }
 
 void Scene::ReleaseUploadBuffer()

@@ -73,3 +73,14 @@ void Player::SetCamera(const shared_ptr<Camera>& camera)
 {
 	m_camera = camera;
 }
+
+void Player::SetScale(XMFLOAT3 scale)
+{
+	m_scale = scale;
+	UpdateWorldMatrix(); 
+}
+
+XMFLOAT3 Player::GetScale() const
+{
+	return m_scale;
+}

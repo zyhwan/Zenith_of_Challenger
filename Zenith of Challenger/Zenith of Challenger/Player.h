@@ -15,6 +15,9 @@ public:
 
 	void SetCamera(const shared_ptr<Camera>& camera);
 
+	void SetScale(XMFLOAT3 scale);
+	XMFLOAT3 GetScale() const;
+
 private:
 	shared_ptr<Camera> m_camera;
 
