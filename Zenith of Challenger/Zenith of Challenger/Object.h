@@ -6,10 +6,17 @@
 #include "stdafx.h"
 #include "mesh.h"
 #include "texture.h"
+#include "buffer.h"
+
+struct ObjectData : public BufferBase
+{
+	XMFLOAT4X4 worldMatrix;
+};
+
 class GameObject
 {
 public:
-	GameObject();
+	GameObject(const ComPtr<ID3D12Device>& device);
 	virtual ~GameObject() = default;
 
 	virtual void Update(FLOAT timeElapsed);
@@ -41,16 +48,27 @@ protected:
 
 	shared_ptr<MeshBase>	m_mesh;
 	shared_ptr<Texture>	m_texture;
+
+	unique_ptr<UploadBuffer<ObjectData>> m_constantBuffer;
 };
 
 class RotatingObject : public GameObject
 {
 public:
-	RotatingObject();
+	RotatingObject(const ComPtr<ID3D12Device>& device);
 	~RotatingObject() override = default;
 
 	void Update(FLOAT timeElapsed) override;
 
 private:
 	FLOAT m_rotatingSpeed;
+};
+
+class Terrain : public GameObject
+{
+public:
+	Terrain(const ComPtr<ID3D12Device>& device);
+	~Terrain() override = default;
+
+	FLOAT GetHeight(FLOAT x, FLOAT z);
 };

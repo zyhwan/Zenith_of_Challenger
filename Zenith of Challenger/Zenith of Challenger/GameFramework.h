@@ -4,12 +4,6 @@
 #include "Player.h"
 #include "Scene.h"
 
-struct CB_FRAMEWORK_INFO
-{
-	float					m_fCurrentTime;
-	float					m_fElapsedTime;
-};
-
 class CGameFramework
 {
 public:

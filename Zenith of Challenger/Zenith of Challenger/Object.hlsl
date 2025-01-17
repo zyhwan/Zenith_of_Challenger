@@ -25,5 +25,5 @@ OBJECT_PIXEL_INPUT OBJECT_VERTEX(OBJECT_VERTEX_INPUT input)
 
 float4 OBJECT_PIXEL(OBJECT_PIXEL_INPUT input) : SV_TARGET
 {
-    return g_texture0.Sample(g_sampler, input.uv);
+    return g_texture[0].Sample(g_sampler, input.uv);
 }

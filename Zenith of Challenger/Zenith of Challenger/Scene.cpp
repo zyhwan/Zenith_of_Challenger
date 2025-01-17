@@ -87,7 +87,7 @@ void Scene::BuildObjects(const ComPtr<ID3D12Device>& device,
 	BuildMeshes(device, commandList);
 	BuildTextures(device, commandList);
 
-	BuildObjects();
+	BuildObjects(device);
 }
 
 inline void Scene::BuildShaders(const ComPtr<ID3D12Device>& device,
@@ -120,10 +120,10 @@ inline void Scene::BuildTextures(const ComPtr<ID3D12Device>& device,
 	const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	auto checkboardTexture = make_shared<Texture>(device, commandList,
-		TEXT("Image/Rock01.dds"), RootParameter::Texture0);
+		TEXT("Image/Rock01.dds"), RootParameter::Texture);
 	m_textures.insert({ "PLAYER", checkboardTexture });
 	auto brickTextire = make_shared<Texture>(device, commandList,
-		TEXT("Image/Stone01.dds"), RootParameter::Texture0);
+		TEXT("Image/Stone01.dds"), RootParameter::Texture);
 	m_textures.insert({ "OBJECT", brickTextire });
 	auto skyboxTexture = make_shared<Texture>(device, commandList,
 		TEXT("Skybox/SkyBox_0.dds"), RootParameter::TextureCube);
@@ -131,17 +131,17 @@ inline void Scene::BuildTextures(const ComPtr<ID3D12Device>& device,
 
 	auto terrainTexture = make_shared<Texture>(device);
 	terrainTexture->LoadTexture(device, commandList,
-		TEXT("Image/Base_Texture.dds"), RootParameter::Texture0);
+		TEXT("Image/Base_Texture.dds"), RootParameter::Texture);
 	terrainTexture->LoadTexture(device, commandList,
-		TEXT("Image/Detail_Texture_7.dds"), RootParameter::Texture1);
+		TEXT("Image/Detail_Texture_7.dds"), RootParameter::Texture);
 
 	terrainTexture->CreateShaderVariable(device);
 	m_textures.insert({ "TERRAIN", terrainTexture });
 }
 
-inline void Scene::BuildObjects()
+inline void Scene::BuildObjects(const ComPtr<ID3D12Device>& device)
 {
-	m_player = make_shared<Player>();
+	m_player = make_shared<Player>(device);
 	m_player->SetMesh(m_meshes["CUBE"]);
 	m_player->SetTexture(m_textures["PLAYER"]);
 	m_player->SetScale(XMFLOAT3{ 1.f, 1.5f, 1.f });
@@ -150,7 +150,7 @@ inline void Scene::BuildObjects()
 	for (int x = -15; x <= 15; x += 5) {
 		for (int y = -15; y <= 15; y += 5) {
 			for (int z = -15; z <= 15; z += 5) {
-				auto object = make_shared<RotatingObject>();
+				auto object = make_shared<RotatingObject>(device);
 				object->SetMesh(m_meshes["CUBE"]);
 				object->SetTexture(m_textures["OBJECT"]);
 				object->SetPosition(XMFLOAT3{
@@ -162,15 +162,15 @@ inline void Scene::BuildObjects()
 		}
 	}
 
-	m_camera = make_shared<ThirdPersonCamera>();
+	m_camera = make_shared<ThirdPersonCamera>(device);
 	m_camera->SetLens(0.25 * XM_PI, gGameFramework->GetAspectRatio(), 0.1f, 1000.f);
 	m_player->SetCamera(m_camera);
 
-	m_skybox = make_shared<GameObject>();
+	m_skybox = make_shared<GameObject>(device);
 	m_skybox->SetMesh(m_meshes["SKYBOX"]);
 	m_skybox->SetTexture(m_textures["SKYBOX"]);
 
-	m_terrain = make_shared<GameObject>();
+	m_terrain = make_shared<Terrain>(device);
 	m_terrain->SetMesh(m_meshes["TERRAIN"]);
 	m_terrain->SetTexture(m_textures["TERRAIN"]);
 	m_terrain->SetScale(XMFLOAT3{ 5.f, 0.5f, 5.f });

@@ -19,6 +19,8 @@ protected:
 	ComPtr<ID3D12Resource>		m_vertexBuffer;
 	ComPtr<ID3D12Resource>		m_vertexUploadBuffer;
 	D3D12_VERTEX_BUFFER_VIEW	m_vertexBufferView;
+
+	D3D12_PRIMITIVE_TOPOLOGY	m_primitiveTopology;
 };
 
 template <typename T> requires derived_from<T, VertexBase>
@@ -27,7 +29,8 @@ class Mesh : public MeshBase
 public:
 	Mesh() = default;
 	Mesh(const ComPtr<ID3D12Device>& device,
-		const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName);
+		const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName,
+		D3D12_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	~Mesh() override = default;
 
 protected:
@@ -40,8 +43,10 @@ protected:
 
 template<typename T> requires derived_from<T, VertexBase>
 inline Mesh<T>::Mesh(const ComPtr<ID3D12Device>& device,
-	const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName)
+	const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName,
+	D3D12_PRIMITIVE_TOPOLOGY primitiveTopology)
 {
+	m_primitiveTopology = primitiveTopology;
 	LoadMesh(device, commandList, fileName);
 }
 
@@ -104,8 +109,9 @@ class IndexMesh : public Mesh<T>
 {
 public:
 	IndexMesh() = default;
-	IndexMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-		const wstring& fileName);
+	IndexMesh(const ComPtr<ID3D12Device>& device,
+		const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName,
+		D3D12_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	~IndexMesh() override = default;
 
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const override;
@@ -127,8 +133,10 @@ protected:
 
 template<typename T> requires derived_from<T, VertexBase>
 inline IndexMesh<T>::IndexMesh(const ComPtr<ID3D12Device>& device,
-	const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName)
+	const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName,
+	D3D12_PRIMITIVE_TOPOLOGY primitiveTopology)
 {
+	m_primitiveTopology = primitiveTopology;
 	LoadMesh(device, commandList, fileName);
 }
 
@@ -212,9 +220,12 @@ inline void IndexMesh<T>::CreateIndexBuffer(const ComPtr<ID3D12Device>& device,
 class TerrainMesh : public Mesh<DetailVertex>
 {
 public:
-	TerrainMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-		const wstring& fileName);
+	TerrainMesh(const ComPtr<ID3D12Device>& device,
+		const ComPtr<ID3D12GraphicsCommandList>& commandList, const wstring& fileName,
+		D3D12_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	~TerrainMesh() override = default;
+
+	FLOAT GetHeight(FLOAT x, FLOAT z) const;
 
 private:
 	void LoadMesh(const ComPtr<ID3D12Device>& device,
@@ -222,4 +233,6 @@ private:
 
 private:
 	vector<vector<BYTE>> m_height;
+	INT m_length;
+	FLOAT m_grid;
 };

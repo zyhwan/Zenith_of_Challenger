@@ -21,11 +21,8 @@ void Texture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comm
 	ID3D12DescriptorHeap* ppHeaps[] = { m_srvDescriptorHeap.Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE descriptorHandle{ m_srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
-	for (const auto& [texture, rootParameterIndex] : m_textures) {
-		commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, descriptorHandle);
-		descriptorHandle.ptr += m_srvDescriptorSize;
-	}
+	commandList->SetGraphicsRootDescriptorTable(m_rootParameterIndex,
+		m_srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
 void Texture::ReleaseUploadBuffer()
@@ -40,6 +37,8 @@ void Texture::LoadTexture(const ComPtr<ID3D12Device>& device,
 	const ComPtr<ID3D12GraphicsCommandList>& commandList,
 	const wstring& fileName, UINT rootParameterIndex)
 {
+	m_rootParameterIndex = rootParameterIndex;
+
 	ComPtr<ID3D12Resource> texture;
 	ComPtr<ID3D12Resource> textureUploadBuffer;
 
@@ -66,7 +65,7 @@ void Texture::LoadTexture(const ComPtr<ID3D12Device>& device,
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 
-	m_textures.push_back({ texture, rootParameterIndex });
+	m_textures.push_back(texture);
 	m_textureUploadBuffer.push_back(textureUploadBuffer);
 }
 
@@ -91,15 +90,14 @@ void Texture::CreateShaderResourceView(const ComPtr<ID3D12Device>& device)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE descriptorHandle{
 		m_srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart() };
 
-	for (const auto& [texture, rootParameterIndex] : m_textures) {
+	for (const auto& texture : m_textures) {
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srvDesc.Format = texture->GetDesc().Format;
 
-		switch (rootParameterIndex)
+		switch (m_rootParameterIndex)
 		{
-		case RootParameter::Texture0:
-		case RootParameter::Texture1:
+		case RootParameter::Texture:
 			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 			srvDesc.Texture2D.MostDetailedMip = 0;
 			srvDesc.Texture2D.MipLevels = texture->GetDesc().MipLevels;
@@ -114,7 +112,6 @@ void Texture::CreateShaderResourceView(const ComPtr<ID3D12Device>& device)
 		default:
 			break;
 		}
-
 		device->CreateShaderResourceView(texture.Get(), &srvDesc, descriptorHandle);
 
 		descriptorHandle.Offset(1, m_srvDescriptorSize);

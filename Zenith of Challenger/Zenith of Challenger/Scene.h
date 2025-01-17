@@ -37,7 +37,7 @@ private:
 		const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	inline void BuildTextures(const ComPtr<ID3D12Device>& device,
 		const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	inline void BuildObjects();
+	inline void BuildObjects(const ComPtr<ID3D12Device>& device);
 
 private:
 	unordered_map<string, shared_ptr<Shader>> m_shaders;
@@ -48,5 +48,5 @@ private:
 	shared_ptr<Player> m_player;
 	vector<shared_ptr<GameObject>> m_objects;
 	shared_ptr<GameObject> m_skybox;
-	shared_ptr<GameObject> m_terrain;
+	shared_ptr<Terrain> m_terrain;
 };

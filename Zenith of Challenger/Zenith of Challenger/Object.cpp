@@ -3,9 +3,11 @@
 //-----------------------------------------------------------------------------
 #include "object.h"
 
-GameObject::GameObject() : m_right{ 1.f, 0.f, 0.f }, m_up{ 0.f, 1.f, 0.f }, m_front{ 0.f, 0.f, 1.f }
+GameObject::GameObject(const ComPtr<ID3D12Device>& device) :
+	m_right{ 1.f, 0.f, 0.f }, m_up{ 0.f, 1.f, 0.f }, m_front{ 0.f, 0.f, 1.f }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
+	m_constantBuffer = make_unique<UploadBuffer<ObjectData>>(device, (UINT)RootParameter::GameObject, true);
 }
 
 void GameObject::Update(FLOAT timeElapsed)
@@ -21,10 +23,11 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) co
 
 void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	XMFLOAT4X4 worldMatrix;
-	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix)));
-	commandList->SetGraphicsRoot32BitConstants(RootParameter::GameObject, 16, &worldMatrix, 0);
+	ObjectData buffer;
+	XMStoreFloat4x4(&buffer.worldMatrix,
+		XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix)));
 
+	m_constantBuffer->UpdateShaderVariable(commandList, buffer);
 	if (m_texture) m_texture->UpdateShaderVariable(commandList);
 }
 
@@ -68,7 +71,7 @@ XMFLOAT3 GameObject::GetPosition() const
 void GameObject::SetScale(XMFLOAT3 scale)
 {
 	m_scale = scale;
-	UpdateWorldMatrix(); // Ensure the world matrix is updated when scale changes
+	UpdateWorldMatrix();
 }
 
 XMFLOAT3 GameObject::GetScale() const
@@ -86,7 +89,7 @@ void GameObject::UpdateWorldMatrix()
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
 }
 
-RotatingObject::RotatingObject() : GameObject()
+RotatingObject::RotatingObject(const ComPtr<ID3D12Device>& device) : GameObject(device)
 {
 	std::random_device rd;
 	std::mt19937 randomEngine(rd());
@@ -97,4 +100,16 @@ RotatingObject::RotatingObject() : GameObject()
 void RotatingObject::Update(FLOAT timeElapsed)
 {
 	Rotate(0.f, m_rotatingSpeed * timeElapsed, 0.f);
+}
+
+Terrain::Terrain(const ComPtr<ID3D12Device>& device) :
+	GameObject(device)
+{
+}
+
+FLOAT Terrain::GetHeight(FLOAT x, FLOAT z)
+{
+	const XMFLOAT3 position = GetPosition();
+	return static_pointer_cast<TerrainMesh>(m_mesh)->
+		GetHeight(x - position.x, z - position.z) + position.y + 0.3f;
 }
