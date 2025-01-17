@@ -2,11 +2,86 @@
 // File: CGameObject.cpp
 //-----------------------------------------------------------------------------
 #include "object.h"
+#include "Instance.h"
 
-GameObject::GameObject(const ComPtr<ID3D12Device>& device) :
+Object::Object() :
 	m_right{ 1.f, 0.f, 0.f }, m_up{ 0.f, 1.f, 0.f }, m_front{ 0.f, 0.f, 1.f }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
+}
+
+void Object::Transform(XMFLOAT3 shift)
+{
+	SetPosition(Vector3::Add(GetPosition(), shift));
+}
+
+void Object::Rotate(FLOAT pitch, FLOAT yaw, FLOAT roll)
+{
+	XMMATRIX rotate{ XMMatrixRotationRollPitchYaw(XMConvertToRadians(pitch), XMConvertToRadians(yaw), XMConvertToRadians(roll)) };
+	XMStoreFloat4x4(&m_worldMatrix, rotate * XMLoadFloat4x4(&m_worldMatrix));
+
+	XMStoreFloat3(&m_right, XMVector3TransformNormal(XMLoadFloat3(&m_right), rotate));
+	XMStoreFloat3(&m_up, XMVector3TransformNormal(XMLoadFloat3(&m_up), rotate));
+	XMStoreFloat3(&m_front, XMVector3TransformNormal(XMLoadFloat3(&m_front), rotate));
+}
+
+void Object::SetPosition(XMFLOAT3 position)
+{
+	m_worldMatrix._41 = position.x;
+	m_worldMatrix._42 = position.y;
+	m_worldMatrix._43 = position.z;
+}
+
+XMFLOAT3 Object::GetPosition() const
+{
+	return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 };
+}
+
+void Object::UpdateWorldMatrix()
+{
+	XMMATRIX scaleMatrix = XMMatrixScaling(m_scale.x, m_scale.y, m_scale.z);
+	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.0f);
+	XMMATRIX translationMatrix = XMMatrixTranslation(m_right.x, m_up.y, m_front.z);
+
+	XMMATRIX worldMatrix = scaleMatrix * rotationMatrix * translationMatrix;
+	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
+}
+
+void Object::SetScale(XMFLOAT3 scale)
+{
+	m_scale = scale;
+	UpdateWorldMatrix();
+}
+
+XMFLOAT3 Object::GetScale() const
+{
+	return m_scale;
+}
+
+
+InstanceObject::InstanceObject() : Object(),
+m_textureIndex{ 0 }
+{
+}
+
+void InstanceObject::Update(FLOAT timeElapsed)
+{
+}
+
+void InstanceObject::UpdateShaderVariable(InstanceData& buffer)
+{
+	XMStoreFloat4x4(&buffer.worldMatrix,
+		XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix)));
+	buffer.textureIndex = m_textureIndex;
+}
+
+void InstanceObject::SetTextureIndex(UINT textureIndex)
+{
+	m_textureIndex = textureIndex;
+}
+
+GameObject::GameObject(const ComPtr<ID3D12Device>& device) : Object()
+{
 	m_constantBuffer = make_unique<UploadBuffer<ObjectData>>(device, (UINT)RootParameter::GameObject, true);
 }
 
@@ -26,25 +101,12 @@ void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& c
 	ObjectData buffer;
 	XMStoreFloat4x4(&buffer.worldMatrix,
 		XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix)));
+	m_constantBuffer->Copy(buffer);
 
-	m_constantBuffer->UpdateShaderVariable(commandList, buffer);
+	m_constantBuffer->UpdateRootConstantBuffer(commandList, buffer);
 	if (m_texture) m_texture->UpdateShaderVariable(commandList);
 }
 
-void GameObject::Transform(XMFLOAT3 shift)
-{
-	SetPosition(Vector3::Add(GetPosition(), shift));
-}
-
-void GameObject::Rotate(FLOAT pitch, FLOAT yaw, FLOAT roll)
-{
-	XMMATRIX rotate{ XMMatrixRotationRollPitchYaw(XMConvertToRadians(pitch), XMConvertToRadians(yaw), XMConvertToRadians(roll)) };
-	XMStoreFloat4x4(&m_worldMatrix, rotate * XMLoadFloat4x4(&m_worldMatrix));
-
-	XMStoreFloat3(&m_right, XMVector3TransformNormal(XMLoadFloat3(&m_right), rotate));
-	XMStoreFloat3(&m_up, XMVector3TransformNormal(XMLoadFloat3(&m_up), rotate));
-	XMStoreFloat3(&m_front, XMVector3TransformNormal(XMLoadFloat3(&m_front), rotate));
-}
 
 void GameObject::SetMesh(const shared_ptr<MeshBase>& mesh)
 {
@@ -56,40 +118,7 @@ void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 	m_texture = texture;
 }
 
-void GameObject::SetPosition(XMFLOAT3 position)
-{
-	m_worldMatrix._41 = position.x;
-	m_worldMatrix._42 = position.y;
-	m_worldMatrix._43 = position.z;
-}
-
-XMFLOAT3 GameObject::GetPosition() const
-{
-	return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 };
-}
-
-void GameObject::SetScale(XMFLOAT3 scale)
-{
-	m_scale = scale;
-	UpdateWorldMatrix();
-}
-
-XMFLOAT3 GameObject::GetScale() const
-{
-	return m_scale;
-}
-
-void GameObject::UpdateWorldMatrix()
-{
-	XMMATRIX scaleMatrix = XMMatrixScaling(m_scale.x, m_scale.y, m_scale.z);
-	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.0f);
-	XMMATRIX translationMatrix = XMMatrixTranslation(m_right.x, m_up.y, m_front.z); 
-
-	XMMATRIX worldMatrix = scaleMatrix * rotationMatrix * translationMatrix;
-	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
-}
-
-RotatingObject::RotatingObject(const ComPtr<ID3D12Device>& device) : GameObject(device)
+RotatingObject::RotatingObject() : InstanceObject()
 {
 	std::random_device rd;
 	std::mt19937 randomEngine(rd());

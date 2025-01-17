@@ -27,7 +27,7 @@ private:
 private:
 	UINT m_srvDescriptorSize;
 
-	ComPtr<ID3D12DescriptorHeap>	m_srvDescriptorHeap;
+	ComPtr<ID3D12DescriptorHeap>				m_srvDescriptorHeap;
 	UINT										m_rootParameterIndex;
 	vector<ComPtr<ID3D12Resource>>				m_textures;
 	vector<ComPtr<ID3D12Resource>>				m_textureUploadBuffer;

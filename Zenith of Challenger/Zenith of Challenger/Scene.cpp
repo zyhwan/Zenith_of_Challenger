@@ -67,10 +67,7 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 	m_camera->UpdateShaderVariable(commandList);
 
 	m_shaders.at("OBJECT")->UpdateShaderVariable(commandList);
-	for (auto& object : m_objects) {
-		object->Render(commandList);
-	}
-	m_player->Render(commandList);
+	m_instanceObject->Render(commandList);
 
 	m_shaders.at("DETAIL")->UpdateShaderVariable(commandList);
 	m_terrain->Render(commandList);
@@ -119,12 +116,14 @@ inline void Scene::BuildMeshes(const ComPtr<ID3D12Device>& device,
 inline void Scene::BuildTextures(const ComPtr<ID3D12Device>& device,
 	const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	auto checkboardTexture = make_shared<Texture>(device, commandList,
+	auto cubeTexture = make_shared<Texture>(device);
+	cubeTexture->LoadTexture(device, commandList,
 		TEXT("Image/Rock01.dds"), RootParameter::Texture);
-	m_textures.insert({ "PLAYER", checkboardTexture });
-	auto brickTextire = make_shared<Texture>(device, commandList,
+	cubeTexture->LoadTexture(device, commandList,
 		TEXT("Image/Stone01.dds"), RootParameter::Texture);
-	m_textures.insert({ "OBJECT", brickTextire });
+	cubeTexture->CreateShaderVariable(device);
+	m_textures.insert({ "CUBE", cubeTexture });
+
 	auto skyboxTexture = make_shared<Texture>(device, commandList,
 		TEXT("Skybox/SkyBox_0.dds"), RootParameter::TextureCube);
 	m_textures.insert({ "SKYBOX", skyboxTexture });
@@ -141,26 +140,28 @@ inline void Scene::BuildTextures(const ComPtr<ID3D12Device>& device,
 
 inline void Scene::BuildObjects(const ComPtr<ID3D12Device>& device)
 {
-	m_player = make_shared<Player>(device);
-	m_player->SetMesh(m_meshes["CUBE"]);
-	m_player->SetTexture(m_textures["PLAYER"]);
+	m_player = make_shared<Player>();
 	m_player->SetScale(XMFLOAT3{ 1.f, 1.5f, 1.f });
 	m_player->SetPosition(XMFLOAT3{ 0.f, 0.f, 0.f });
 
-	for (int x = -15; x <= 15; x += 5) {
-		for (int y = -15; y <= 15; y += 5) {
-			for (int z = -15; z <= 15; z += 5) {
-				auto object = make_shared<RotatingObject>(device);
-				object->SetMesh(m_meshes["CUBE"]);
-				object->SetTexture(m_textures["OBJECT"]);
+	for (int x = -10; x <= 10; x += 5) {
+		for (int y = 0; y <= 20; y += 5) {
+			for (int z = -10; z <= 10; z += 5) {
+				auto object = make_shared<RotatingObject>();
 				object->SetPosition(XMFLOAT3{
 					static_cast<FLOAT>(x),
 					static_cast<FLOAT>(y),
 					static_cast<FLOAT>(z) });
+				object->SetTextureIndex(1);
 				m_objects.push_back(object);
 			}
 		}
 	}
+	m_instanceObject = make_unique<Instance>(device,
+		static_pointer_cast<Mesh<TextureVertex>>(m_meshes["CUBE"]), static_cast<UINT>(m_objects.size() + 1));
+	m_instanceObject->SetObjects(m_objects);
+	m_instanceObject->SetObject(m_player);
+	m_instanceObject->SetTexture(m_textures["CUBE"]);
 
 	m_camera = make_shared<ThirdPersonCamera>(device);
 	m_camera->SetLens(0.25 * XM_PI, gGameFramework->GetAspectRatio(), 0.1f, 1000.f);

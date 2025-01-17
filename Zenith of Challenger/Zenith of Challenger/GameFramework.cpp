@@ -258,9 +258,10 @@ void CGameFramework::CreateRootSignature()
 	descriptorRange[DescriptorRange::Texture].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER rootParameter[4];
-	rootParameter[RootParameter::GameObject].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-	rootParameter[RootParameter::Camera].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
+	CD3DX12_ROOT_PARAMETER rootParameter[5];
+	rootParameter[RootParameter::GameObject].InitAsConstantBufferView(0);
+	rootParameter[RootParameter::Camera].InitAsConstantBufferView(1);
+	rootParameter[RootParameter::Instance].InitAsShaderResourceView(0, 1);
 	rootParameter[RootParameter::TextureCube].InitAsDescriptorTable(1,
 		&descriptorRange[DescriptorRange::TextureCube], D3D12_SHADER_VISIBILITY_PIXEL);
 	rootParameter[RootParameter::Texture].InitAsDescriptorTable(1,

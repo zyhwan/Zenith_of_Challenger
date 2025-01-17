@@ -8,12 +8,56 @@
 #include "texture.h"
 #include "buffer.h"
 
+
+class Object abstract
+{
+public:
+	Object();
+
+	virtual void Update(FLOAT timeElapsed) = 0;
+
+	void Transform(XMFLOAT3 shift);
+	void Rotate(FLOAT pitch, FLOAT yaw, FLOAT roll);
+
+	void SetPosition(XMFLOAT3 position);
+	XMFLOAT3 GetPosition() const;
+
+	void UpdateWorldMatrix();
+
+	virtual void SetScale(XMFLOAT3 scale);
+	virtual XMFLOAT3 GetScale() const;
+protected:
+	XMFLOAT4X4			m_worldMatrix;
+
+	XMFLOAT3			m_right;
+	XMFLOAT3			m_up;
+	XMFLOAT3			m_front;
+
+	XMFLOAT3             m_scale;
+};
+
+struct InstanceData;
+class InstanceObject : public Object
+{
+public:
+	InstanceObject();
+	virtual ~InstanceObject() = default;
+
+	virtual void Update(FLOAT timeElapsed) override;
+	void UpdateShaderVariable(InstanceData& buffer);
+
+	void SetTextureIndex(UINT textureIndex);
+
+protected:
+	UINT				m_textureIndex;
+};
+
 struct ObjectData : public BufferBase
 {
 	XMFLOAT4X4 worldMatrix;
 };
 
-class GameObject
+class GameObject : public Object
 {
 public:
 	GameObject(const ComPtr<ID3D12Device>& device);
@@ -23,39 +67,20 @@ public:
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
-	void Transform(XMFLOAT3 shift);
-	void Rotate(FLOAT pitch, FLOAT yaw, FLOAT roll);
-
 	void SetMesh(const shared_ptr<MeshBase>& mesh);
 	void SetTexture(const shared_ptr<Texture>& texture);
 
-	void SetPosition(XMFLOAT3 position);
-	XMFLOAT3 GetPosition() const;
-
-	virtual void SetScale(XMFLOAT3 scale);
-	virtual XMFLOAT3 GetScale() const;
-
 protected:
-	void UpdateWorldMatrix();
-
-	XMFLOAT4X4			m_worldMatrix;
-
-	XMFLOAT3			m_right;
-	XMFLOAT3			m_up;
-	XMFLOAT3			m_front;
-
-	XMFLOAT3             m_scale;
-
 	shared_ptr<MeshBase>	m_mesh;
 	shared_ptr<Texture>	m_texture;
 
 	unique_ptr<UploadBuffer<ObjectData>> m_constantBuffer;
 };
 
-class RotatingObject : public GameObject
+class RotatingObject : public InstanceObject
 {
 public:
-	RotatingObject(const ComPtr<ID3D12Device>& device);
+	RotatingObject();
 	~RotatingObject() override = default;
 
 	void Update(FLOAT timeElapsed) override;

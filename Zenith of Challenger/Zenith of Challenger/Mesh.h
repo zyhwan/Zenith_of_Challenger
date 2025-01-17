@@ -11,7 +11,7 @@ public:
 	MeshBase() = default;
 	virtual ~MeshBase() = default;
 
-	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, size_t count = 1) const;
 	virtual void ReleaseUploadBuffer();
 
 protected:

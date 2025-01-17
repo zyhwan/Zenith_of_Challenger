@@ -4,11 +4,11 @@
 
 #include "mesh.h"
 
-void MeshBase::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void MeshBase::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, size_t count) const
 {
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	commandList->DrawInstanced(m_vertices, 1, 0, 0);
+    commandList->IASetPrimitiveTopology(m_primitiveTopology);
+    commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    commandList->DrawInstanced(m_vertices, static_cast<UINT>(count), 0, 0);
 }
 
 void MeshBase::ReleaseUploadBuffer()

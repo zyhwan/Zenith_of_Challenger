@@ -8,13 +8,13 @@ class UploadBuffer
 {
 public:
     UploadBuffer(const ComPtr<ID3D12Device>& device, UINT rootParameterIndex,
-        BOOL isConstantBuffer = false);
+        UINT elementCount = 1, BOOL isConstantBuffer = true);
     ~UploadBuffer();
 
-    void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, const T& data) const;
+    void UpdateRootConstantBuffer(const ComPtr<ID3D12GraphicsCommandList>& commandList, const T& data) const;
+    void UpdateRootShaderResource(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
-private:
-    void Copy(const T& data) const;
+    void Copy(const T& data, UINT index = 0) const;
 
 private:
     ComPtr<ID3D12Resource>  m_uploadBuffer;
@@ -26,7 +26,7 @@ private:
 
 template<typename T> requires derived_from<T, BufferBase>
 inline UploadBuffer<T>::UploadBuffer(const ComPtr<ID3D12Device>& device,
-    UINT rootParameterIndex, BOOL isConstantBuffer) :
+    UINT rootParameterIndex, UINT elementCount, BOOL isConstantBuffer) :
     m_rootParameterIndex{ rootParameterIndex }, m_isConstantBuffer{ isConstantBuffer }
 {
     if (m_isConstantBuffer) m_byteSize = ((sizeof(T) + 255) & ~255);
@@ -35,12 +35,12 @@ inline UploadBuffer<T>::UploadBuffer(const ComPtr<ID3D12Device>& device,
     device->CreateCommittedResource(
         &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
         D3D12_HEAP_FLAG_NONE,
-        &CD3DX12_RESOURCE_DESC::Buffer(m_byteSize),
+        &CD3DX12_RESOURCE_DESC::Buffer(m_byteSize * elementCount),
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
         IID_PPV_ARGS(&m_uploadBuffer));
 
-    (m_uploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&m_data)));
+   (m_uploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&m_data)));
 }
 
 template<typename T> requires derived_from<T, BufferBase>
@@ -51,16 +51,29 @@ inline UploadBuffer<T>::~UploadBuffer()
 }
 
 template<typename T> requires derived_from<T, BufferBase>
-inline void UploadBuffer<T>::UpdateShaderVariable(
+inline void UploadBuffer<T>::UpdateRootConstantBuffer(
     const ComPtr<ID3D12GraphicsCommandList>& commandList, const T& data) const
 {
     Copy(data);
-    commandList->SetGraphicsRootConstantBufferView(
-        m_rootParameterIndex, m_uploadBuffer->GetGPUVirtualAddress());
+
+    if (m_isConstantBuffer) {
+        commandList->SetGraphicsRootConstantBufferView(
+            m_rootParameterIndex, m_uploadBuffer->GetGPUVirtualAddress());
+    }
 }
 
 template<typename T> requires derived_from<T, BufferBase>
-inline void UploadBuffer<T>::Copy(const T& data) const
+inline void UploadBuffer<T>::UpdateRootShaderResource(
+    const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-    memcpy(m_data, &data, sizeof(T));
+    if (!m_isConstantBuffer) {
+        commandList->SetGraphicsRootShaderResourceView(
+            m_rootParameterIndex, m_uploadBuffer->GetGPUVirtualAddress());
+    }
+}
+
+template<typename T> requires derived_from<T, BufferBase>
+inline void UploadBuffer<T>::Copy(const T& data, UINT index) const
+{
+    memcpy(&m_data[index], &data, sizeof(T));
 }
