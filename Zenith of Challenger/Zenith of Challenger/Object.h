@@ -7,7 +7,8 @@
 #include "mesh.h"
 #include "texture.h"
 #include "buffer.h"
-
+#include "Material.h"
+#include "Lighting.h"
 
 class Object abstract
 {
@@ -47,9 +48,11 @@ public:
 	void UpdateShaderVariable(InstanceData& buffer);
 
 	void SetTextureIndex(UINT textureIndex);
+	void SetMaterialIndex(UINT materialIndex);
 
 protected:
 	UINT				m_textureIndex;
+	UINT				m_materialIndex;
 };
 
 struct ObjectData : public BufferBase
@@ -69,10 +72,12 @@ public:
 
 	void SetMesh(const shared_ptr<MeshBase>& mesh);
 	void SetTexture(const shared_ptr<Texture>& texture);
+	void SetMaterial(const shared_ptr<Material>& material);
 
 protected:
 	shared_ptr<MeshBase>	m_mesh;
-	shared_ptr<Texture>	m_texture;
+	shared_ptr<Texture>		m_texture;
+	shared_ptr<Material>	m_material;
 
 	unique_ptr<UploadBuffer<ObjectData>> m_constantBuffer;
 };
@@ -88,6 +93,37 @@ public:
 private:
 	FLOAT m_rotatingSpeed;
 };
+
+class LightObject : public RotatingObject
+{
+public:
+	LightObject(const shared_ptr<SpotLight>& light);
+	~LightObject() override = default;
+
+	virtual void Update(FLOAT timeElapsed) override;
+private:
+	shared_ptr<SpotLight> m_light;
+};
+
+class Sun : public InstanceObject
+{
+public:
+	Sun(const shared_ptr<DirectionalLight>& light);
+	~Sun() override = default;
+
+	void SetStrength(XMFLOAT3 strength);
+
+	void Update(FLOAT timeElapsed) override;
+
+private:
+	shared_ptr<DirectionalLight> m_light;
+
+	XMFLOAT3 m_strength;
+	FLOAT m_phi;
+	FLOAT m_theta;
+	const FLOAT m_radius;
+};
+
 
 class Terrain : public GameObject
 {

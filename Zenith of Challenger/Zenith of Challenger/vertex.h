@@ -13,8 +13,11 @@ struct Vertex : public VertexBase
 struct TextureVertex : public VertexBase
 {
 	TextureVertex() = default;
-	TextureVertex(XMFLOAT3 position, XMFLOAT2 uv) : position{ position }, uv{ uv } {}
+	TextureVertex(XMFLOAT3 position, XMFLOAT3 normal, XMFLOAT2 uv) :
+		position{ position }, normal{ normal }, uv{ uv } {
+	}
 	XMFLOAT3 position;
+	XMFLOAT3 normal;
 	XMFLOAT2 uv;
 };
 

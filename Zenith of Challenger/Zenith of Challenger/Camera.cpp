@@ -19,8 +19,9 @@ void Camera::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comma
 	XMStoreFloat4x4(&buffer.projectionMatrix,
 		XMMatrixTranspose(XMLoadFloat4x4(&m_projectionMatrix)));
 	buffer.eye = m_eye;
+	m_constantBuffer->Copy(buffer);
 
-	m_constantBuffer->UpdateRootConstantBuffer(commandList, buffer);
+	m_constantBuffer->UpdateRootConstantBuffer(commandList);
 }
 
 void Camera::SetLens(FLOAT fovy, FLOAT aspect, FLOAT minZ, FLOAT maxZ)

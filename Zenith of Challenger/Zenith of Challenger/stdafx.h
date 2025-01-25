@@ -60,6 +60,7 @@ using Microsoft::WRL::ComPtr;
 #include <random>
 #include <fstream>
 #include "d3dx12.h"
+#include <iostream>
 
 using namespace std;
 
@@ -77,16 +78,29 @@ namespace Settings
 	constexpr FLOAT CameraMinPitch = XM_PIDIV2 - 0.6f;
 	constexpr FLOAT CameraMaxPitch = XM_PIDIV2 + 0.2f;
 
+	constexpr FLOAT SunRadius = 80.f;
+
 	constexpr FLOAT PlayerSpeed =  20.f;
+
+	namespace Light
+	{
+		constexpr UINT MaxLight = 100;
+		constexpr UINT Directional = 0;
+		constexpr UINT Point = 1;
+		constexpr UINT Spot = 2;
+		constexpr UINT Last = 3;
+	}
 }
 
 namespace RootParameter
 {
 	constexpr UINT GameObject = 0;
 	constexpr UINT Camera = 1;
-	constexpr UINT Instance = 2;
-	constexpr UINT TextureCube = 3;
-	constexpr UINT Texture = 4;
+	constexpr UINT Material = 2;
+	constexpr UINT Light = 3;
+	constexpr UINT Instance = 4;
+	constexpr UINT TextureCube = 5;
+	constexpr UINT Texture = 6;
 }
 
 namespace DescriptorRange

@@ -39,11 +39,15 @@ XMFLOAT3 Object::GetPosition() const
 
 void Object::UpdateWorldMatrix()
 {
+	// 월드 행렬 업데이트
 	XMMATRIX scaleMatrix = XMMatrixScaling(m_scale.x, m_scale.y, m_scale.z);
 	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.0f);
-	XMMATRIX translationMatrix = XMMatrixTranslation(m_right.x, m_up.y, m_front.z);
-
+	XMMATRIX translationMatrix = XMMatrixTranslation(m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43);
 	XMMATRIX worldMatrix = scaleMatrix * rotationMatrix * translationMatrix;
+
+	// 디버깅: 월드 행렬 출력
+	// printf("WorldMatrix: %f %f %f\n", m_worldMatrix._11, m_worldMatrix._22, m_worldMatrix._33);
+
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
 }
 
@@ -60,7 +64,7 @@ XMFLOAT3 Object::GetScale() const
 
 
 InstanceObject::InstanceObject() : Object(),
-m_textureIndex{ 0 }
+m_textureIndex{ 0 }, m_materialIndex{ 0 }
 {
 }
 
@@ -73,12 +77,19 @@ void InstanceObject::UpdateShaderVariable(InstanceData& buffer)
 	XMStoreFloat4x4(&buffer.worldMatrix,
 		XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix)));
 	buffer.textureIndex = m_textureIndex;
+	buffer.materialIndex = m_materialIndex;
 }
 
 void InstanceObject::SetTextureIndex(UINT textureIndex)
 {
 	m_textureIndex = textureIndex;
 }
+
+void InstanceObject::SetMaterialIndex(UINT materialIndex)
+{
+	m_materialIndex = materialIndex;
+}
+
 
 GameObject::GameObject(const ComPtr<ID3D12Device>& device) : Object()
 {
@@ -103,8 +114,9 @@ void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& c
 		XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix)));
 	m_constantBuffer->Copy(buffer);
 
-	m_constantBuffer->UpdateRootConstantBuffer(commandList, buffer);
+	m_constantBuffer->UpdateRootConstantBuffer(commandList);
 	if (m_texture) m_texture->UpdateShaderVariable(commandList);
+	if (m_material) m_material->UpdateShaderVariable(commandList);
 }
 
 
@@ -118,6 +130,12 @@ void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 	m_texture = texture;
 }
 
+void GameObject::SetMaterial(const shared_ptr<Material>& material)
+{
+	m_material = material;
+}
+
+
 RotatingObject::RotatingObject() : InstanceObject()
 {
 	std::random_device rd;
@@ -129,6 +147,54 @@ RotatingObject::RotatingObject() : InstanceObject()
 void RotatingObject::Update(FLOAT timeElapsed)
 {
 	Rotate(0.f, m_rotatingSpeed * timeElapsed, 0.f);
+}
+
+
+LightObject::LightObject(const shared_ptr<SpotLight>& light) :
+	RotatingObject(), m_light{ light }
+{
+}
+
+void LightObject::Update(FLOAT timeElapsed)
+{
+	// 디버깅: 광원의 위치 및 방향 고정
+	m_light->SetPosition(GetPosition());
+	m_light->SetDirection(Vector3::Normalize(m_front));
+}
+
+Sun::Sun(const shared_ptr<DirectionalLight>& light) : m_light{ light },
+m_strength{ 1.f, 1.f, 1.f }, m_phi{ 0.f }, m_theta{ 0.f }, m_radius{ Settings::SunRadius }
+{
+}
+
+void Sun::SetStrength(XMFLOAT3 strength)
+{
+	m_strength = strength;
+}
+
+void Sun::Update(FLOAT timeElapsed)
+{
+	// 고정된 위치를 설정합니다. 필요에 따라 값을 변경하세요.
+	XMFLOAT3 fixedPosition{
+		0.0f,            // X축 위치 (고정된 값)
+		m_radius,        // Y축 위치 (하늘의 고정된 높이)
+		0.0f             // Z축 위치 (고정된 값)
+	};
+
+	// 광원의 위치를 고정된 위치로 설정합니다.
+	SetPosition(fixedPosition);
+
+	XMFLOAT3 fixedDirection{
+		0.0f,   // X축 방향
+		-1.0f,  // Y축 방향 (아래를 가리킴)
+		0.0f    // Z축 방향
+	};
+
+	// 광원의 방향을 고정된 방향으로 설정합니다.
+	m_light->SetDirection(fixedDirection);
+
+	// 광원의 세기를 항상 일정하게 유지합니다.
+	m_light->SetStrength(m_strength);
 }
 
 Terrain::Terrain(const ComPtr<ID3D12Device>& device) :

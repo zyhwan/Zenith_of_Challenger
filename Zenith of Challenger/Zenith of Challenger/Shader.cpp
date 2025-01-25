@@ -9,11 +9,13 @@ void Shader::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comma
 	commandList->SetPipelineState(m_pipelineState.Get());
 }
 
-ObjectShader::ObjectShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature)
+ObjectShader::ObjectShader(const ComPtr<ID3D12Device>& device, 
+	const ComPtr<ID3D12RootSignature>& rootSignature)
 {
 	vector<D3D12_INPUT_ELEMENT_DESC> inputLayout = {
 	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } };
+	{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } };
 
 #if defined(_DEBUG)
 	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -23,9 +25,9 @@ ObjectShader::ObjectShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 	ComPtr<ID3DBlob> mvsByteCode, mpsByteCode;
 	D3DCompileFromFile(TEXT("Object.hlsl"), nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE, "OBJECT_VERTEX", "vs_5_1", compileFlags, 0, &mvsByteCode, nullptr);
+		D3D_COMPILE_STANDARD_FILE_INCLUDE, "VERTEX_MAIN", "vs_5_1", compileFlags, 0, &mvsByteCode, nullptr);
 	D3DCompileFromFile(TEXT("Object.hlsl"), nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE, "OBJECT_PIXEL", "ps_5_1", compileFlags, 0, &mpsByteCode, nullptr);
+		D3D_COMPILE_STANDARD_FILE_INCLUDE, "PIXEL_MAIN", "ps_5_1", compileFlags, 0, &mpsByteCode, nullptr);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.InputLayout = { inputLayout.data(), (UINT)inputLayout.size() };
@@ -37,6 +39,7 @@ ObjectShader::ObjectShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 		reinterpret_cast<BYTE*>(mpsByteCode->GetBufferPointer()),
 		mpsByteCode->GetBufferSize() };
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.SampleMask = UINT_MAX;

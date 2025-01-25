@@ -23,11 +23,17 @@ void Instance::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& com
 	}
 	m_instanceBuffer->UpdateRootShaderResource(commandList);
 	if (m_texture) m_texture->UpdateShaderVariable(commandList);
+	if (m_material) m_material->UpdateShaderVariable(commandList);
 }
 
 void Instance::SetTexture(const shared_ptr<Texture>& texture)
 {
 	m_texture = texture;
+}
+
+void Instance::SetMaterial(const shared_ptr<Material>& material)
+{
+	m_material = material;
 }
 
 void Instance::SetObject(const shared_ptr<InstanceObject>& object)

@@ -10,6 +10,8 @@ cbuffer Camera : register(b1)
     float3 g_cameraPosition : packoffset(c8);
 };
 
+#include "Lighting.hlsl"
+
 TextureCube g_textureCube : register(t0);
 Texture2D g_texture[2] : register(t1);
 
@@ -17,6 +19,7 @@ struct InstanceData
 {
     float4x4 worldMatrix;
     uint textureIndex;
+    uint materialIndex;
 };
 StructuredBuffer<InstanceData> g_instanceData : register(t0, space1);
 

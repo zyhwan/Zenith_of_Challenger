@@ -1,8 +1,7 @@
 //-----------------------------------------------------------------------------
-// File: CGameObject.cpp
+// File: Mesh.cpp
 //-----------------------------------------------------------------------------
-
-#include "mesh.h"
+#include "Mesh.h"
 
 void MeshBase::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, size_t count) const
 {

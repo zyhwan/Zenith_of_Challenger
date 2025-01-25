@@ -258,9 +258,11 @@ void CGameFramework::CreateRootSignature()
 	descriptorRange[DescriptorRange::Texture].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER rootParameter[5];
-	rootParameter[RootParameter::GameObject].InitAsConstantBufferView(0);
-	rootParameter[RootParameter::Camera].InitAsConstantBufferView(1);
+	CD3DX12_ROOT_PARAMETER rootParameter[7];
+	rootParameter[RootParameter::GameObject].InitAsConstantBufferView(0, 0);
+	rootParameter[RootParameter::Camera].InitAsConstantBufferView(1, 0);
+	rootParameter[RootParameter::Material].InitAsConstantBufferView(0, 1);
+	rootParameter[RootParameter::Light].InitAsConstantBufferView(0, 2);
 	rootParameter[RootParameter::Instance].InitAsShaderResourceView(0, 1);
 	rootParameter[RootParameter::TextureCube].InitAsDescriptorTable(1,
 		&descriptorRange[DescriptorRange::TextureCube], D3D12_SHADER_VISIBILITY_PIXEL);
@@ -332,7 +334,9 @@ void CGameFramework::Update()
 		MouseEvent(m_hWnd, m_GameTimer.GetElapsedTime());
 		KeyboardEvent(m_GameTimer.GetElapsedTime());
 	}
-	m_scene->Update(m_GameTimer.GetElapsedTime());
+	if (m_scene) {
+		m_scene->Update(m_GameTimer.GetElapsedTime());
+	}
 }
 
 void CGameFramework::Render()
@@ -357,7 +361,9 @@ void CGameFramework::Render()
 	m_commandList->ClearDepthStencilView(dsvHandle,
 		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-	m_scene->Render(m_commandList);
+	if (m_scene) {
+		m_scene->Render(m_commandList);
+	}
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));

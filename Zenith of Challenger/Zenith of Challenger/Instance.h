@@ -8,6 +8,7 @@ struct InstanceData : public BufferBase
 {
 	XMFLOAT4X4 worldMatrix;
 	UINT textureIndex;
+	UINT materialIndex;
 };
 
 class Instance
@@ -19,6 +20,7 @@ public:
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
 	void SetTexture(const shared_ptr<Texture>& texture);
+	void SetMaterial(const shared_ptr<Material>& material);
 	void SetObject(const shared_ptr<InstanceObject>& object);
 	void SetObjects(const vector<shared_ptr<InstanceObject>>& objects);
 	void SetObjects(vector<shared_ptr<InstanceObject>>&& objects);
@@ -26,6 +28,7 @@ public:
 private:
 	shared_ptr<MeshBase> m_mesh;
 	shared_ptr<Texture>					m_texture;
+	shared_ptr<Material>				m_material;
 
 	vector<shared_ptr<InstanceObject>> m_objects;
 	UINT m_maxObjectCount;

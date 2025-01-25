@@ -10,6 +10,7 @@
 #include "object.h"
 #include "stdafx.h"
 #include "Instance.h"
+#include "Lighting.h"
 
 class Scene
 {
@@ -38,13 +39,18 @@ private:
 		const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	inline void BuildTextures(const ComPtr<ID3D12Device>& device,
 		const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	inline void BuildMaterials(const ComPtr<ID3D12Device>& device,
+		const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	inline void BuildObjects(const ComPtr<ID3D12Device>& device);
 
 private:
 	unordered_map<string, shared_ptr<Shader>> m_shaders;
 	unordered_map<string, shared_ptr<MeshBase>> m_meshes;
 	unordered_map<string, shared_ptr<Texture>> m_textures;
+	unordered_map<string, shared_ptr<Material>> m_materials;
 
+	unique_ptr<LightSystem> m_lightSystem;
+	unique_ptr<Sun>		m_sun;
 	shared_ptr<Camera> m_camera;
 	shared_ptr<Player> m_player;
 	vector<shared_ptr<InstanceObject>> m_objects;

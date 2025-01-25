@@ -56,6 +56,8 @@ void Scene::KeyboardEvent(FLOAT timeElapsed)
 void Scene::Update(FLOAT timeElapsed)
 {
 	m_player->Update(timeElapsed);
+	m_sun->Update(timeElapsed);
+
 	for (auto& object : m_objects) {
 		object->Update(timeElapsed);
 	}
@@ -65,6 +67,7 @@ void Scene::Update(FLOAT timeElapsed)
 void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
 	m_camera->UpdateShaderVariable(commandList);
+	m_lightSystem->UpdateShaderVariable(commandList);
 
 	m_shaders.at("OBJECT")->UpdateShaderVariable(commandList);
 	m_instanceObject->Render(commandList);
@@ -83,6 +86,7 @@ void Scene::BuildObjects(const ComPtr<ID3D12Device>& device,
 	BuildShaders(device, commandList, rootSignature);
 	BuildMeshes(device, commandList);
 	BuildTextures(device, commandList);
+	BuildMaterials(device, commandList);
 
 	BuildObjects(device);
 }
@@ -103,7 +107,7 @@ inline void Scene::BuildMeshes(const ComPtr<ID3D12Device>& device,
 	const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	auto cubeMesh = make_shared<Mesh<TextureVertex>>(device, commandList,
-		TEXT("Model/CubeMesh.binary"));
+		TEXT("Model/CubeNormalMesh.binary"));
 	m_meshes.insert({ "CUBE", cubeMesh });
 	auto skyboxMesh = make_shared<Mesh<Vertex>>(device, commandList,
 		TEXT("Model/SkyboxMesh.binary"));
@@ -138,16 +142,40 @@ inline void Scene::BuildTextures(const ComPtr<ID3D12Device>& device,
 	m_textures.insert({ "TERRAIN", terrainTexture });
 }
 
+inline void Scene::BuildMaterials(const ComPtr<ID3D12Device>& device,
+	const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	auto cubeMaterial = make_shared<Material>();
+	cubeMaterial->SetMaterial(XMFLOAT3{ 0.95f, 0.93f, 0.88f }, 0.125f, XMFLOAT3{ 0.1f, 0.1f, 0.1f });
+	cubeMaterial->CreateShaderVariable(device);
+	m_materials.insert({ "CUBE", cubeMaterial });
+}
+
+
 inline void Scene::BuildObjects(const ComPtr<ID3D12Device>& device)
 {
+	m_lightSystem = make_unique<LightSystem>(device);
+	auto sunLight = make_shared<DirectionalLight>();
+	m_lightSystem->SetLight(sunLight);
+
+	m_sun = make_unique<Sun>(sunLight);
+	m_sun->SetStrength(XMFLOAT3{ 1.3f, 1.2f, 1.2f });
+
 	m_player = make_shared<Player>();
 	m_player->SetScale(XMFLOAT3{ 1.f, 1.5f, 1.f });
 	m_player->SetPosition(XMFLOAT3{ 0.f, 0.f, 0.f });
+	m_player->SetTextureIndex(0);
 
-	for (int x = -10; x <= 10; x += 5) {
-		for (int y = 0; y <= 20; y += 5) {
-			for (int z = -10; z <= 10; z += 5) {
-				auto object = make_shared<RotatingObject>();
+	for (int x = -10; x <= 10; x += 10) {
+		for (int y = 0; y <= 20; y += 10) {
+			for (int z = -10; z <= 10; z += 10) {
+				auto light = make_shared<SpotLight>(
+					XMFLOAT3{ 0.7f, 0.7f, 0.7f },
+					XMFLOAT3{ 1.f, 0.f, 0.f },
+					XMFLOAT3{ 0.f, 0.f, 0.f },
+					1.f, 50.f, 80.f);
+				m_lightSystem->SetLight(light);
+				auto object = make_shared<LightObject>(light);
 				object->SetPosition(XMFLOAT3{
 					static_cast<FLOAT>(x),
 					static_cast<FLOAT>(y),
@@ -157,11 +185,13 @@ inline void Scene::BuildObjects(const ComPtr<ID3D12Device>& device)
 			}
 		}
 	}
+
 	m_instanceObject = make_unique<Instance>(device,
 		static_pointer_cast<Mesh<TextureVertex>>(m_meshes["CUBE"]), static_cast<UINT>(m_objects.size() + 1));
 	m_instanceObject->SetObjects(m_objects);
 	m_instanceObject->SetObject(m_player);
 	m_instanceObject->SetTexture(m_textures["CUBE"]);
+	m_instanceObject->SetMaterial(m_materials["CUBE"]);
 
 	m_camera = make_shared<ThirdPersonCamera>(device);
 	m_camera->SetLens(0.25 * XM_PI, gGameFramework->GetAspectRatio(), 0.1f, 1000.f);
