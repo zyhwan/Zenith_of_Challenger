@@ -16,38 +16,47 @@ class Scene
 {
 public:
 	Scene();
-	~Scene() = default;
+	virtual ~Scene() = default;
 
-	void MouseEvent(HWND hWnd, FLOAT timeElapsed);
-	void KeyboardEvent(FLOAT timeElapsed);
-	void Update(FLOAT timeElapsed);
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	virtual void MouseEvent(HWND hWnd, FLOAT timeElapsed);
+	virtual void KeyboardEvent(FLOAT timeElapsed);
+	virtual void Update(FLOAT timeElapsed);
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
-	void BuildObjects(const ComPtr<ID3D12Device>& device,
+	virtual void BuildObjects(const ComPtr<ID3D12Device>& device,
 		const ComPtr<ID3D12GraphicsCommandList>& commandList,
 		const ComPtr<ID3D12RootSignature>& rootSignature);
-	void ReleaseUploadBuffer();
+	virtual void ReleaseUploadBuffer();
 
-	void MouseEvent(UINT message, LPARAM lParam);
-	void KeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void MouseEvent(UINT message, LPARAM lParam);
+	virtual void KeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-private:
-	inline void BuildShaders(const ComPtr<ID3D12Device>& device,
+	virtual void ClearSceneResources(); //리소스 완전 해제 함수 추가
+
+	void SetDevice(const ComPtr<ID3D12Device>& device) { m_device = device; }
+	void SetCommandList(const ComPtr<ID3D12GraphicsCommandList>& commandList) { m_commandList = commandList; }
+	void SetRootSignature(const ComPtr<ID3D12RootSignature>& rootSignature) { m_rootSignature = rootSignature; }
+protected:
+	virtual void BuildShaders(const ComPtr<ID3D12Device>& device,
 		const ComPtr<ID3D12GraphicsCommandList>& commandList,
 		const ComPtr<ID3D12RootSignature>& rootSignature);
-	inline void BuildMeshes(const ComPtr<ID3D12Device>& device,
+	virtual void BuildMeshes(const ComPtr<ID3D12Device>& device,
 		const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	inline void BuildTextures(const ComPtr<ID3D12Device>& device,
+	virtual void BuildTextures(const ComPtr<ID3D12Device>& device,
 		const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	inline void BuildMaterials(const ComPtr<ID3D12Device>& device,
+	virtual void BuildMaterials(const ComPtr<ID3D12Device>& device,
 		const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	inline void BuildObjects(const ComPtr<ID3D12Device>& device);
+	virtual void BuildObjects(const ComPtr<ID3D12Device>& device);
 
-private:
+protected:
 	unordered_map<string, shared_ptr<Shader>> m_shaders;
 	unordered_map<string, shared_ptr<MeshBase>> m_meshes;
 	unordered_map<string, shared_ptr<Texture>> m_textures;
 	unordered_map<string, shared_ptr<Material>> m_materials;
+
+	ComPtr<ID3D12Device> m_device;
+	ComPtr<ID3D12GraphicsCommandList> m_commandList;
+	ComPtr<ID3D12RootSignature> m_rootSignature;
 
 	unique_ptr<LightSystem> m_lightSystem;
 	unique_ptr<Sun>		m_sun;

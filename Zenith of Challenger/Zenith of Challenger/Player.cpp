@@ -47,10 +47,6 @@ void Player::KeyboardEvent(FLOAT timeElapsed)
 		direction = right;
 	}
 
-	if (GetAsyncKeyState('Q') & 0x8000) {
-		exit(1);
-	}
-
 	if (GetAsyncKeyState('W') || GetAsyncKeyState('A') ||
 		GetAsyncKeyState('S') || (GetAsyncKeyState('D') & 0x8000)) {
 		XMFLOAT3 angle{ Vector3::Angle(m_front, direction) };

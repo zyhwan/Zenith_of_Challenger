@@ -3,6 +3,9 @@
 #include "Timer.h"
 #include "Player.h"
 #include "Scene.h"
+#include "SceneManager.h"
+#include "GameScene.h"
+#include "StartScene.h"
 
 class CGameFramework
 {
@@ -44,6 +47,9 @@ private:
 
 	void Update();
 	void Render();
+
+	void ProcessInput(); //키 입력 체크
+
 private:
 	static const UINT					m_nSwapChainBuffers = 2;
 
@@ -83,6 +89,6 @@ private:
 	_TCHAR								m_pszBaseTitle[256];// 원래 창 제목
 	_TCHAR								m_pszFrameRate[50];// FPS 표시용
 
-	unique_ptr<Scene>					m_scene;
+	unique_ptr<SceneManager>			m_sceneManager;
 };
 

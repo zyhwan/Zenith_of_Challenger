@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------------
 // File: CGameFramework.cpp
 //-----------------------------------------------------------------------------
 
@@ -25,7 +25,7 @@ void CGameFramework::OnCreate(HINSTANCE hInstance, HWND hMainWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hMainWnd;
 
-	// �⺻ â ���� ����
+	// 기본 창 제목 저장
 	GetWindowText(m_hWnd, m_pszBaseTitle, sizeof(m_pszBaseTitle) / sizeof(TCHAR));
 
 	InitDirect3D();
@@ -41,10 +41,10 @@ void CGameFramework::FrameAdvance()
 {
 	m_GameTimer.Tick();
 
-	// FPS ��� �� ���� ������Ʈ
+	// FPS 계산 및 제목 업데이트
 	UINT fps = m_GameTimer.GetFPS();
 	_stprintf_s(m_pszFrameRate, _T("%s - FPS: %u"), m_pszBaseTitle, fps);
-	SetWindowText(m_hWnd, m_pszFrameRate); // ���� ������Ʈ
+	SetWindowText(m_hWnd, m_pszFrameRate); // 제목 업데이트
 
 	Update();
 	Render();
@@ -52,22 +52,21 @@ void CGameFramework::FrameAdvance()
 
 void CGameFramework::MouseEvent(HWND hWnd, FLOAT timeElapsed)
 {
-	m_scene->MouseEvent(hWnd, timeElapsed);
+	m_sceneManager->MouseEvent(hWnd, timeElapsed);
 }
 
 void CGameFramework::KeyboardEvent(FLOAT timeElapsed)
 {
-	m_scene->KeyboardEvent(timeElapsed);
+	m_sceneManager->KeyboardEvent(timeElapsed);
 }
 
 void CGameFramework::MouseEvent(UINT message, LPARAM lParam)
 {
-	m_scene->MouseEvent(message, lParam);
 }
 
 void CGameFramework::KeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	m_scene->KeyboardEvent(hWnd, message, wParam, lParam);
+
 }
 
 void CGameFramework::SetActive(BOOL isActive)
@@ -159,7 +158,7 @@ void CGameFramework::CreateCommandQueueAndList()
 	m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue));
 	m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator));
 	m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList));
-	// Reset�� ȣ���ϱ� ������ Close ���·� ����
+	// Reset을 호출하기 때문에 Close 상태로 시작
 	m_commandList->Close();
 }
 
@@ -301,8 +300,18 @@ void CGameFramework::BuildObjects()
 {
 	m_commandList->Reset(m_commandAllocator.Get(), nullptr);
 
-	m_scene = make_unique<Scene>();
-	m_scene->BuildObjects(m_device, m_commandList, m_rootSignature);
+	m_sceneManager = make_unique<SceneManager>();
+
+	// StartScene 추가 (스카이박스만 표시)
+	auto startScene = make_shared<StartScene>();
+	m_sceneManager->AddScene("StartScene", startScene);
+
+	// GameScene 추가 (오브젝트, 터레인, 스카이박스 등 기존 구현 유지)
+	auto gameScene = make_shared<GameScene>();
+	m_sceneManager->AddScene("GameScene", gameScene);
+
+	// 기본 씬으로 StartScene 설정
+	m_sceneManager->ChangeScene("StartScene", m_device, m_commandList, m_rootSignature);
 
 	m_commandList->Close();
 	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
@@ -310,8 +319,7 @@ void CGameFramework::BuildObjects()
 
 	WaitForGpuComplete();
 
-	m_scene->ReleaseUploadBuffer();
-
+	m_sceneManager->ReleaseUploadBuffer();
 	m_GameTimer.Tick();
 }
 
@@ -334,13 +342,22 @@ void CGameFramework::Update()
 		MouseEvent(m_hWnd, m_GameTimer.GetElapsedTime());
 		KeyboardEvent(m_GameTimer.GetElapsedTime());
 	}
-	if (m_scene) {
-		m_scene->Update(m_GameTimer.GetElapsedTime());
+
+	ProcessInput(); // 키 입력 체크
+	if (m_sceneManager)
+	{
+		m_sceneManager->Update(m_GameTimer.GetElapsedTime());
 	}
 }
 
 void CGameFramework::Render()
 {
+	if (!m_sceneManager)
+	{
+		std::cout << "SceneManager가 설정되지 않았습니다!" << std::endl;
+		return;
+	}
+
 	m_commandAllocator->Reset();
 	m_commandList->Reset(m_commandAllocator.Get(), nullptr);
 
@@ -361,8 +378,14 @@ void CGameFramework::Render()
 	m_commandList->ClearDepthStencilView(dsvHandle,
 		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-	if (m_scene) {
-		m_scene->Render(m_commandList);
+	// 디버깅: 현재 활성화된 씬 확인
+	if (m_sceneManager->GetCurrentScene())
+	{
+		m_sceneManager->Render(m_commandList);
+	}
+	else
+	{
+		std::cout << " 현재 씬이 없습니다!" << std::endl;
 	}
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(),
@@ -373,6 +396,39 @@ void CGameFramework::Render()
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 
 	m_swapChain->Present(1, 0);
+
+	WaitForGpuComplete();
+}
+
+void CGameFramework::ProcessInput()
+{
+	m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+
+	static bool isGameScene = false;
+
+	if (GetAsyncKeyState(VK_RETURN) & 0x0001) // Enter 키 입력 시 씬 전환
+	{
+		if (isGameScene)
+		{
+			std::cout << "StartScene으로 전환" << std::endl;
+			m_sceneManager->ChangeScene("StartScene", m_device, m_commandList, m_rootSignature);
+		}
+		else
+		{
+			std::cout << "GameScene으로 전환" << std::endl;
+			m_sceneManager->ChangeScene("GameScene", m_device, m_commandList, m_rootSignature);
+		}
+
+		isGameScene = !isGameScene;
+	}
+
+	if (GetAsyncKeyState('Q') & 0x8000) {
+		exit(1);
+	}
+
+	m_commandList->Close();
+	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 
 	WaitForGpuComplete();
 }

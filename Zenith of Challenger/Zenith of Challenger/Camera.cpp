@@ -1,4 +1,4 @@
-#include "camera.h"
+﻿#include "camera.h"
 
 Camera::Camera(const ComPtr<ID3D12Device>& device) : m_eye{ 0.f, 0.f, 0.f }, m_at{ 0.f, 0.f, 1.f }, m_up{ 0.f, 1.f, 0.f },
 m_u{ 1.f, 0.f, 0.f }, m_v{ 0.f, 1.f, 0.f }, m_n{ 0.f, 0.f, 1.f }
