@@ -11,7 +11,13 @@ void Instance::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) cons
 {
 	UpdateShaderVariable(commandList);
 
-	m_mesh->Render(commandList, m_objects.size());
+	//m_mesh->Render(commandList, m_objects.size());
+
+	// FBX 모델을 `InstanceObject`를 이용하여 렌더링
+	if (!m_objects.empty())
+	{
+		m_mesh->Render(commandList, static_cast<UINT>(m_objects.size()));
+	}
 }
 
 void Instance::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

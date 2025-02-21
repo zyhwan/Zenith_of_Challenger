@@ -45,9 +45,6 @@ void Object::UpdateWorldMatrix()
 	XMMATRIX translationMatrix = XMMatrixTranslation(m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43);
 	XMMATRIX worldMatrix = scaleMatrix * rotationMatrix * translationMatrix;
 
-	// 디버깅: 월드 행렬 출력
-	// printf("WorldMatrix: %f %f %f\n", m_worldMatrix._11, m_worldMatrix._22, m_worldMatrix._33);
-
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
 }
 

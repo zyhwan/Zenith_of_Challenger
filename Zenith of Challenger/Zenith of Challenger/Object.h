@@ -50,9 +50,12 @@ public:
 	void SetTextureIndex(UINT textureIndex);
 	void SetMaterialIndex(UINT materialIndex);
 
+	//FBX 메쉬 설정 함수 추가
+	void SetMesh(const shared_ptr<MeshBase>& mesh) { m_mesh = mesh; }
 protected:
 	UINT				m_textureIndex;
 	UINT				m_materialIndex;
+	shared_ptr<MeshBase> m_mesh; //FBX 모델을 저장할 변수 추가
 };
 
 struct ObjectData : public BufferBase

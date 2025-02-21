@@ -4,6 +4,9 @@
 
 #include "player.h"
 
+// 키 입력 상태 저장용
+static unordered_map<int, bool> keyStates;
+
 Player::Player() :
 	InstanceObject(), m_speed{ Settings::PlayerSpeed }
 {
@@ -15,50 +18,32 @@ void Player::MouseEvent(FLOAT timeElapsed)
 
 void Player::KeyboardEvent(FLOAT timeElapsed)
 {
-	XMFLOAT3 front{ m_camera->GetN() }; front.y = 0.f;
-	front = Vector3::Normalize(front);
-	XMFLOAT3 back{ Vector3::Negate(front) };
-	XMFLOAT3 right{ m_camera->GetU() };
-	XMFLOAT3 left{ Vector3::Negate(right) };
-	XMFLOAT3 direction{};
+    if (!m_camera) return;
 
-	if (GetAsyncKeyState('W') && GetAsyncKeyState('A') & 0x8000) {
-		direction = Vector3::Normalize(Vector3::Add(front, left));
-	}
-	else if (GetAsyncKeyState('W') && GetAsyncKeyState('D') & 0x8000) {
-		direction = Vector3::Normalize(Vector3::Add(front, right));
-	}
-	else if (GetAsyncKeyState('S') && GetAsyncKeyState('A') & 0x8000) {
-		direction = Vector3::Normalize(Vector3::Add(back, left));
-	}
-	else if (GetAsyncKeyState('S') && GetAsyncKeyState('D') & 0x8000) {
-		direction = Vector3::Normalize(Vector3::Add(back, right));
-	}
-	else if (GetAsyncKeyState('W') & 0x8000) {
-		direction = front;
-	}
-	else if (GetAsyncKeyState('A') & 0x8000) {
-		direction = left;
-	}
-	else if (GetAsyncKeyState('S') & 0x8000) {
-		direction = back;
-	}
-	else if (GetAsyncKeyState('D') & 0x8000) {
-		direction = right;
-	}
+    XMFLOAT3 front{ m_camera->GetN() };
+    front.y = 0.f;
+    front = Vector3::Normalize(front);
 
-	if (GetAsyncKeyState('W') || GetAsyncKeyState('A') ||
-		GetAsyncKeyState('S') || (GetAsyncKeyState('D') & 0x8000)) {
-		XMFLOAT3 angle{ Vector3::Angle(m_front, direction) };
-		XMFLOAT3 cross{ Vector3::Cross(m_front, direction) };
-		if (cross.y >= 0.f) {
-			Rotate(0.f, XMConvertToDegrees(angle.y) * 10.f * timeElapsed, 0.f);
-		}
-		else {
-			Rotate(0.f, -XMConvertToDegrees(angle.y) * 10.f * timeElapsed, 0.f);
-		}
-		Transform(Vector3::Mul(m_front, m_speed * timeElapsed));
-	}
+    XMFLOAT3 right{ m_camera->GetU() };
+    right.y = 0.f;
+    right = Vector3::Normalize(right);
+
+    XMFLOAT3 direction{ 0.f, 0.f, 0.f };
+
+    // 키 입력 감지
+    if (GetAsyncKeyState('W') & 0x8000) { direction = Vector3::Add(direction, front); }
+    if (GetAsyncKeyState('S') & 0x8000) { direction = Vector3::Add(direction, Vector3::Negate(front)); }
+    if (GetAsyncKeyState('A') & 0x8000) { direction = Vector3::Add(direction, Vector3::Negate(right)); }
+    if (GetAsyncKeyState('D') & 0x8000) { direction = Vector3::Add(direction, right); }
+    if (GetAsyncKeyState(VK_PRIOR) & 0x8000) { direction = Vector3::Add(direction, XMFLOAT3{ 0.f, 1.f, 0.f }); } // Page Up (위로 이동)
+    if (GetAsyncKeyState(VK_NEXT) & 0x8000) { direction = Vector3::Add(direction, XMFLOAT3{ 0.f, -1.f, 0.f }); } // Page Down (아래로 이동)
+
+    // 부드러운 이동 처리
+    if (!Vector3::IsZero(direction))
+    {
+        direction = Vector3::Normalize(direction);
+        Transform(Vector3::Mul(direction, m_speed * timeElapsed)); // 시간에 비례한 속도로 이동
+    }
 }
 
 void Player::Update(FLOAT timeElapsed)

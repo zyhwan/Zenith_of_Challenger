@@ -1,3 +1,5 @@
+#pragma shader_target 5_1
+
 #define MaxLight 30
 #define Directional 0
 #define Point 1

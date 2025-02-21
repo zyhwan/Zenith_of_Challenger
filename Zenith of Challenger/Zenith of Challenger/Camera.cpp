@@ -56,6 +56,8 @@ void Camera::UpdateBasis()
 	m_v = Vector3::Normalize(Vector3::CrossProduct(m_n, m_u));
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 ThirdPersonCamera::ThirdPersonCamera(const ComPtr<ID3D12Device>& device) : Camera(device),
 m_radius{ Settings::DefaultCameraRadius },
 m_phi{ Settings::DefaultCameraPitch }, m_theta{ Settings::DefaultCameraYaw }
@@ -89,4 +91,66 @@ void ThirdPersonCamera::RotatePitch(FLOAT radian)
 void ThirdPersonCamera::RotateYaw(FLOAT radian)
 {
 	m_theta += radian;
+}
+
+void ThirdPersonCamera::ZoomIn()
+{
+	m_radius = max(5.0f, m_radius - 2.0f);
+}
+
+void ThirdPersonCamera::ZoomOut()
+{
+	m_radius = min(30.0f, m_radius + 2.0f);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+QuarterViewCamera::QuarterViewCamera(const ComPtr<ID3D12Device>& device)
+	: Camera(device), m_radius(25.0f), m_phi(XM_PIDIV4), m_theta(-45.0f) //m_phi(XM_PIDIV4)
+{
+	m_offset = XMFLOAT3(-18.0f, 20.0f, -18.0f);  // 대각선 오프셋 적용
+}
+
+void QuarterViewCamera::Update(FLOAT timeElapsed)
+{
+	// 쿼터뷰는 고정된 각도 유지
+}
+
+void QuarterViewCamera::UpdateEye(XMFLOAT3 position)
+{
+	// m_radius 값을 반영하여 카메라 위치 업데이트
+	XMFLOAT3 offset{
+		m_radius * cos(m_theta),   // X 방향 이동
+		m_radius * sin(m_phi),     // 높이 유지
+		m_radius * sin(m_theta)    // Z 방향 이동 (대각선)
+	};
+
+	m_eye.x = position.x + offset.x;
+	m_eye.y = position.y + offset.y;
+	m_eye.z = position.z + offset.z;
+
+	m_at = position;  // 카메라는 항상 플레이어를 바라봄
+	UpdateBasis();    // 방향 벡터 업데이트
+}
+
+void QuarterViewCamera::RotatePitch(FLOAT radian)
+{
+	// 쿼터뷰 카메라는 Pitch 회전이 필요 없음
+}
+
+void QuarterViewCamera::RotateYaw(FLOAT radian)
+{
+	// Yaw 회전도 필요하지 않으므로 비워둠
+}
+
+void QuarterViewCamera::ZoomIn()
+{
+	m_radius = max(10.0f, m_radius - 2.0f);  // 최소 거리 제한
+	UpdateEye(m_at);  // 줌 변경 후 카메라 업데이트
+}
+
+void QuarterViewCamera::ZoomOut()
+{
+	m_radius = min(40.0f, m_radius + 2.0f);  // 최대 거리 제한
+	UpdateEye(m_at);  // 줌 변경 후 카메라 업데이트
 }

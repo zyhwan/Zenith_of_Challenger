@@ -1,22 +1,42 @@
 #pragma once
 #include "stdafx.h"
 
+const ULONG MAX_SAMPLE_COUNT = 50;
+
 class CGameTimer
 {
 public:
-	CGameTimer();
-	~CGameTimer() = default;
+    CGameTimer();
+    ~CGameTimer() = default;
 
-	void Tick();
-	FLOAT GetElapsedTime() const;
-	UINT GetFPS() const; // FPS 계산 함수 추가
+    void Tick(float fLockFPS = 0.0f);
+    void Start();
+    void Stop();
+    void Reset();
+
+    unsigned long GetFrameRate(LPTSTR lpszString = NULL, int nCharacters = 0);
+    float GetElapsedTime() const;
+    float GetTotalTime();
+    UINT GetFPS() const;
 
 private:
-	LARGE_INTEGER	m_prev;
-	LARGE_INTEGER	m_frequency;
-	FLOAT			m_deltaTime;
-	UINT            m_frameCount;  // 지난 1초 동안의 프레임 수
-	FLOAT           m_elapsedTime; // 지난 시간 합계
-	UINT            m_fps;         // 최종 계산된 FPS
+    double m_fTimeScale;
+    float m_fTimeElapsed;
 
+    __int64 m_nBasePerformanceCounter;
+    __int64 m_nPausedPerformanceCounter;
+    __int64 m_nStopPerformanceCounter;
+    __int64 m_nCurrentPerformanceCounter;
+    __int64 m_nLastPerformanceCounter;
+
+    __int64 m_nPerformanceFrequencyPerSec;
+
+    float m_fFrameTime[MAX_SAMPLE_COUNT];
+    ULONG m_nSampleCount;
+
+    unsigned long m_nCurrentFrameRate;
+    unsigned long m_nFramesPerSecond;
+    float m_fFPSTimeElapsed;
+
+    bool m_bStopped;
 };

@@ -29,6 +29,9 @@ public:
 	XMFLOAT3 GetV() const;
 	XMFLOAT3 GetN() const;
 
+	virtual void ZoomIn() = 0;
+	virtual void ZoomOut() = 0;
+
 protected:
 	void UpdateBasis();
 
@@ -58,8 +61,35 @@ public:
 
 	void RotatePitch(FLOAT radian) override;
 	void RotateYaw(FLOAT radian) override;
+
+	void ZoomIn() override;
+	void ZoomOut() override;
 private:
 	FLOAT m_radius;
 	FLOAT m_phi;
 	FLOAT m_theta;
+};
+
+
+class QuarterViewCamera : public Camera
+{
+public:
+	QuarterViewCamera(const ComPtr<ID3D12Device>& device);
+	~QuarterViewCamera() = default;
+
+	void Update(FLOAT timeElapsed) override;
+	void UpdateEye(XMFLOAT3 position) override;
+
+	void RotatePitch(FLOAT radian) override;
+	void RotateYaw(FLOAT radian) override;
+
+	void ZoomIn() override;
+	void ZoomOut() override;
+
+private:
+	FLOAT m_radius;  // 카메라 거리 (줌 기능)
+	FLOAT m_phi;     // 카메라의 위/아래 각도 (쿼터뷰 고정)
+	FLOAT m_theta;   // 카메라의 좌/우 회전 (플레이어 따라감)
+
+	XMFLOAT3 m_offset; // 플레이어와의 상대적 위치
 };

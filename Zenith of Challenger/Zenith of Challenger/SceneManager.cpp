@@ -38,7 +38,6 @@ void SceneManager::ChangeScene(const std::string& name, const ComPtr<ID3D12Devic
 
             //GPU 동기화
             device->GetDeviceRemovedReason();
-            commandList->Reset(nullptr, nullptr);
         }
 
         m_currentScene = m_scenes[name];

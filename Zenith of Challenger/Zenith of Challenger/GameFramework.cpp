@@ -12,7 +12,7 @@ CGameFramework::CGameFramework(UINT windowWidth, UINT windowHeight) :
 	m_scissorRect{ 0, 0, static_cast<LONG>(windowWidth), static_cast<LONG>(windowHeight) },
 	m_frameIndex{ 0 }
 {
-
+	m_GameTimer.Reset();
 }
 
 CGameFramework::~CGameFramework()
@@ -39,12 +39,17 @@ void CGameFramework::OnDestroy()
 
 void CGameFramework::FrameAdvance()
 {
-	m_GameTimer.Tick();
+	m_GameTimer.Tick(60); // FPS 측정
 
-	// FPS 계산 및 제목 업데이트
 	UINT fps = m_GameTimer.GetFPS();
-	_stprintf_s(m_pszFrameRate, _T("%s - FPS: %u"), m_pszBaseTitle, fps);
-	SetWindowText(m_hWnd, m_pszFrameRate); // 제목 업데이트
+	if (fps > 0)
+	{
+		_stprintf_s(m_pszFrameRate, _T("%s - FPS: %u"), m_pszBaseTitle, fps);
+		SetWindowText(m_hWnd, m_pszFrameRate);
+	}
+
+	FLOAT deltaTime = m_GameTimer.GetElapsedTime();
+	deltaTime = max(min(deltaTime, 1.0f / 30.0f), 1.0f / 60.0f);
 
 	Update();
 	Render();
@@ -167,7 +172,7 @@ void CGameFramework::CreateSwapChain()
 	DXGI_SWAP_CHAIN_DESC sd{};
 	sd.BufferDesc.Width = m_nWndClientWidth;
 	sd.BufferDesc.Height = m_nWndClientHeight;
-	sd.BufferDesc.RefreshRate.Numerator = 60;
+	sd.BufferDesc.RefreshRate.Numerator = 0;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
 	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	sd.SampleDesc.Count = m_MSAA4xQualityLevel > 1 ? 4 : 1;
@@ -342,12 +347,10 @@ void CGameFramework::Update()
 		MouseEvent(m_hWnd, m_GameTimer.GetElapsedTime());
 		KeyboardEvent(m_GameTimer.GetElapsedTime());
 	}
+	ProcessInput();
 
-	ProcessInput(); // 키 입력 체크
-	if (m_sceneManager)
-	{
-		m_sceneManager->Update(m_GameTimer.GetElapsedTime());
-	}
+	if (m_sceneManager) m_sceneManager->Update(m_GameTimer.GetElapsedTime());
+	if (m_player) m_player->Update(m_GameTimer.GetElapsedTime());
 }
 
 void CGameFramework::Render()
@@ -361,7 +364,8 @@ void CGameFramework::Render()
 	m_commandAllocator->Reset();
 	m_commandList->Reset(m_commandAllocator.Get(), nullptr);
 
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(),
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+		m_renderTargets[m_frameIndex].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -378,7 +382,6 @@ void CGameFramework::Render()
 	m_commandList->ClearDepthStencilView(dsvHandle,
 		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-	// 디버깅: 현재 활성화된 씬 확인
 	if (m_sceneManager->GetCurrentScene())
 	{
 		m_sceneManager->Render(m_commandList);
@@ -388,7 +391,8 @@ void CGameFramework::Render()
 		std::cout << " 현재 씬이 없습니다!" << std::endl;
 	}
 
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(),
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+		m_renderTargets[m_frameIndex].Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	m_commandList->Close();
@@ -402,6 +406,14 @@ void CGameFramework::Render()
 
 void CGameFramework::ProcessInput()
 {
+	// 메시지 큐를 이용한 입력 처리 최적화
+	MSG msg = {};
+	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+
 	m_commandList->Reset(m_commandAllocator.Get(), nullptr);
 
 	static bool isGameScene = false;

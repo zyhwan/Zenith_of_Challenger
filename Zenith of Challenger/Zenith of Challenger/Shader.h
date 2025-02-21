@@ -36,3 +36,11 @@ public:
 	DetailShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
 	~DetailShader() override = default;
 };
+
+// FBX ¸ðµ¨ Àü¿ë ½¦ÀÌ´õ Ãß°¡
+class FBXShader : public Shader
+{
+public:
+	FBXShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
+	~FBXShader() override = default;
+};

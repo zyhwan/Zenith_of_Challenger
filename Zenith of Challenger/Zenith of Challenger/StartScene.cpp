@@ -48,8 +48,7 @@ void StartScene::BuildShaders(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 void StartScene::BuildMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-    auto skyboxMesh = make_shared<Mesh<Vertex>>(device, commandList,
-        TEXT("Model/SkyboxMesh.binary"));
+    auto skyboxMesh = make_shared<Mesh<Vertex>>(device, commandList, TEXT("Model/SkyboxMesh.binary"));
     m_meshes.insert({ "SKYBOX", skyboxMesh });
 }
 

@@ -29,6 +29,14 @@ public:
 	UINT GetWindowWidth();
 	UINT GetWindowHeight();
 
+	ComPtr<ID3D12Device> GetDevice() { return m_device; }
+	ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return m_commandList; } 
+
+	// Player 객체 가져오기
+	shared_ptr<Player> GetPlayer() { return m_player; } 
+
+	// Player 객체 설정 (GameScene에서 호출)
+	void SetPlayer(shared_ptr<Player> player) { m_player = player; }
 private:
 	void InitDirect3D();
 
@@ -90,5 +98,6 @@ private:
 	_TCHAR								m_pszFrameRate[50];// FPS 표시용
 
 	unique_ptr<SceneManager>			m_sceneManager;
+	shared_ptr<Player>					m_player;  // 플레이어 객체 추가 GameFramework가 Player를 관리
 };
 

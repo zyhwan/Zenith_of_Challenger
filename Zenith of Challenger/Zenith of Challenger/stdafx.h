@@ -80,7 +80,7 @@ namespace Settings
 
 	constexpr FLOAT SunRadius = 80.f;
 
-	constexpr FLOAT PlayerSpeed =  20.f;
+	constexpr FLOAT PlayerSpeed =  50.f;
 
 	namespace Light
 	{
@@ -247,6 +247,14 @@ namespace Vector3
 	inline XMFLOAT3 Mul(const XMFLOAT3& a, const FLOAT& scalar)
 	{
 		return XMFLOAT3{ a.x * scalar, a.y * scalar, a.z * scalar };
+	}
+	inline XMFLOAT3 Lerp(const XMFLOAT3& start, const XMFLOAT3& end, float t)
+	{
+		return XMFLOAT3{
+			start.x + (end.x - start.x) * t,
+			start.y + (end.y - start.y) * t,
+			start.z + (end.z - start.z) * t
+		};
 	}
 }
 

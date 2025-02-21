@@ -14,6 +14,7 @@ public:
 	virtual void Update(FLOAT timeElapsed) override;
 
 	void SetCamera(const shared_ptr<Camera>& camera);
+	shared_ptr<Camera> GetCamera() const { return m_camera; }  // Ãß°¡
 
 	void SetScale(XMFLOAT3 scale);
 	XMFLOAT3 GetScale() const;
