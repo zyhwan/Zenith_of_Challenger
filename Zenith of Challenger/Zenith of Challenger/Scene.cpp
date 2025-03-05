@@ -90,3 +90,5 @@ void Scene::ClearSceneResources()
 		m_device->GetDeviceRemovedReason();
 	}
 }
+
+//임시 수정
