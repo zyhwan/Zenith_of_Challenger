@@ -33,6 +33,9 @@
     <Filter Include="소스 파일\System">
       <UniqueIdentifier>{92e4a2fe-b725-41cf-8cfc-8f6f08b016d9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Model Load">
+      <UniqueIdentifier>{b1813ef4-e10a-4ca6-b2fb-29e1ac38f796}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameFramework.h">
@@ -107,6 +110,9 @@
     <ClInclude Include="GameScene.h">
       <Filter>소스 파일\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="FBXLoader.h">
+      <Filter>소스 파일\Model Load</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Zenith of Challenger.cpp">
@@ -166,6 +172,9 @@
     <ClCompile Include="GameScene.cpp">
       <Filter>소스 파일\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="FBXLoader.cpp">
+      <Filter>소스 파일\Model Load</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Zenith of Challenger.rc">
@@ -194,6 +203,9 @@
       <Filter>셰이더 파일</Filter>
     </FxCompile>
     <FxCompile Include="Lighting.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="FBXShader.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
   </ItemGroup>

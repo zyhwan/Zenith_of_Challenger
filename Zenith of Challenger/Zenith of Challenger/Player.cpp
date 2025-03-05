@@ -51,6 +51,12 @@ void Player::Update(FLOAT timeElapsed)
 	if (m_camera) m_camera->UpdateEye(GetPosition());
 }
 
+void Player::Move(XMFLOAT3 direction, FLOAT speed)
+{
+    direction = Vector3::Normalize(direction);
+    Transform(Vector3::Mul(direction, speed));
+}
+
 void Player::SetCamera(const shared_ptr<Camera>& camera)
 {
 	m_camera = camera;

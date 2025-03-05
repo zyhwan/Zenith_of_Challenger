@@ -101,6 +101,7 @@ void GameObject::Update(FLOAT timeElapsed)
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
 	UpdateShaderVariable(commandList);
+	if (m_texture) m_texture->UpdateShaderVariable(commandList); // 텍스처 바인딩
 	m_mesh->Render(commandList);
 }
 
@@ -130,6 +131,11 @@ void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 void GameObject::SetMaterial(const shared_ptr<Material>& material)
 {
 	m_material = material;
+}
+
+void GameObject::SetWorldMatrix(const XMMATRIX& worldMatrix)
+{
+	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
 }
 
 

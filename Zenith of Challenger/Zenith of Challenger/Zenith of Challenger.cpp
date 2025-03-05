@@ -147,11 +147,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     PAINTSTRUCT ps;
     int wmId, wmEvent;
     HDC hdc;
+    int delta = 0;
 
     switch (message)
     {
     case WM_ACTIVATE:
         gGameFramework->SetActive(static_cast<BOOL>(wParam));
+        ShowCursor(FALSE);  // 마우스 커서 숨김
         break;
     case WM_SIZE:
     case WM_LBUTTONDOWN:
@@ -162,9 +164,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_MOUSEMOVE:
     case WM_KEYDOWN:
-        gGameFramework->KeyboardEvent(hWnd, message, wParam, lParam);
-        break;
     case WM_KEYUP:
+        break;
+    case WM_MOUSEWHEEL:
         break;
     case WM_COMMAND:
         {
@@ -187,7 +189,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:
         {
             hdc = BeginPaint(hWnd, &ps);
-            // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
             EndPaint(hWnd, &ps);
         }
         break;

@@ -14,7 +14,7 @@ struct PSInput
     float2 TexCoord : TEXCOORD;
 };
 
-// Á¤Á¡ ¼ÎÀÌ´õ (°³º° ¸Þ½Ã ±â¹Ý)
+// Á¤Á¡ ¼ÎÀÌ´õ (FBX ¸ðµ¨¿ë)
 PSInput VSMain(VSInput input)
 {
     PSInput output;
@@ -24,14 +24,22 @@ PSInput VSMain(VSInput input)
     output.Position = mul(viewPosition, g_projectionMatrix);
     
     // ³ë¸Ö º¯È¯ Àû¿ë
-    output.Normal = mul(input.Normal, (float3x3) g_worldMatrix);
-    output.TexCoord = input.TexCoord;
+    output.Normal = normalize(mul(input.Normal, (float3x3) g_worldMatrix));
+
+    // UV ÁÂÇ¥ º¯È¯ (DirectX ÁÂÇ¥°è º¸Á¤)
+    output.TexCoord = float2(input.TexCoord.x, 1.0f - input.TexCoord.y);
 
     return output;
 }
 
-// ÇÈ¼¿ ¼ÎÀÌ´õ (´Ü»ö Ãâ·Â)
+// ÇÈ¼¿ ¼ÎÀÌ´õ (ÅØ½ºÃ³ Àû¿ë)
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    return float4(1.0f, 0.5f, 0.2f, 1.0f); // ÅØ½ºÃ³ ¾øÀÌ ´Ü»ö Ãâ·Â
+    float4 textureColor = g_texture[0].Sample(g_sampler, input.TexCoord);
+    
+    float3 normal = normalize(input.Normal);
+    float3 lightDir = normalize(float3(0.5f, -1.0f, 0.5f));
+    float lightIntensity = max(dot(normal, lightDir), 0.2f);
+    
+    return float4(textureColor.rgb * lightIntensity, textureColor.a);
 }

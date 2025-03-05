@@ -61,6 +61,7 @@ using Microsoft::WRL::ComPtr;
 #include <fstream>
 #include "d3dx12.h"
 #include <iostream>
+#include <filesystem>  //추가: 파일 시스템 헤더 포함
 
 using namespace std;
 

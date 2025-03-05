@@ -78,7 +78,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) con
 		m_shaders.at("FBX")->UpdateShaderVariable(commandList);
 		for (const auto& object : m_fbxObjects)
 		{
-			object->Render(commandList);
+			//object->Render(commandList);
 		}
 	}
 }

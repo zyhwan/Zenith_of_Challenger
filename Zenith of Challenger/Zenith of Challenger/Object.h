@@ -77,6 +77,8 @@ public:
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetMaterial(const shared_ptr<Material>& material);
 
+	// 변환 행렬 설정 함수 추가
+	void SetWorldMatrix(const XMMATRIX& worldMatrix);
 protected:
 	shared_ptr<MeshBase>	m_mesh;
 	shared_ptr<Texture>		m_texture;

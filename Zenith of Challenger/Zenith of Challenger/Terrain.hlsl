@@ -30,7 +30,4 @@ float4 DETAIL_PIXEL(DETAIL_PIXEL_INPUT input) : SV_TARGET
 {
     return lerp(g_texture[0].Sample(g_sampler, input.uv0),
     g_texture[1].Sample(g_sampler, input.uv1), 0.5f);
-    
-    //// 밝은 연두색 출력
-    //return float4(0.5f, 1.0f, 0.5f, 1.0f);
 }

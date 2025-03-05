@@ -13,6 +13,8 @@ public:
 	void KeyboardEvent(FLOAT timeElapsed);
 	virtual void Update(FLOAT timeElapsed) override;
 
+	void Move(XMFLOAT3 direction, FLOAT speed);  // 이동 로직 추가
+
 	void SetCamera(const shared_ptr<Camera>& camera);
 	shared_ptr<Camera> GetCamera() const { return m_camera; }  // 추가
 
