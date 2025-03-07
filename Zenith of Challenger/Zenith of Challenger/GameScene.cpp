@@ -26,7 +26,7 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device,
 	{
 		auto gameObject = make_shared<GameObject>(device);
 		gameObject->SetMesh(fbxMesh);
-		gameObject->SetScale(XMFLOAT3{ 0.05f, 0.01f, 0.05f });
+		gameObject->SetScale(XMFLOAT3{ 0.05f, 0.05f, 0.05f });
 		gameObject->SetPosition(XMFLOAT3{ 0.0f, -50.0f, 0.0f });
 		m_fbxObjects.push_back(gameObject);
 	}
@@ -67,7 +67,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) con
 	}
 
 	m_shaders.at("DETAIL")->UpdateShaderVariable(commandList);
-	m_terrain->Render(commandList);
+	//m_terrain->Render(commandList);
 
 	m_shaders.at("SKYBOX")->UpdateShaderVariable(commandList);
 	m_skybox->Render(commandList);
@@ -78,7 +78,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) con
 		m_shaders.at("FBX")->UpdateShaderVariable(commandList);
 		for (const auto& object : m_fbxObjects)
 		{
-			//object->Render(commandList);
+			object->Render(commandList);
 		}
 	}
 }
@@ -157,7 +157,7 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device)
 
 	auto player = make_shared<Player>();  // 플레이어 객체 생성
 	player->SetScale(XMFLOAT3{ 1.f, 1.5f, 1.f });
-	player->SetPosition(XMFLOAT3{ 0.f, 20.f, 0.f });
+	player->SetPosition(XMFLOAT3{ 0.f, 0.f, 0.f });
 	player->SetTextureIndex(0);
 	// GameFramework에 player를 설정
 	gGameFramework->SetPlayer(player);
@@ -165,29 +165,29 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device)
 	// GameScene에서도 같은 Player 객체를 사용하도록 설정
 	m_player = gGameFramework->GetPlayer();
 
-	for (int x = -10; x <= 10; x += 10) {
-		for (int y = 0; y <= 20; y += 10) {
-			for (int z = -10; z <= 10; z += 10) {
-				auto light = make_shared<SpotLight>(
-					XMFLOAT3{ 0.7f, 0.7f, 0.7f },
-					XMFLOAT3{ 1.f, 0.f, 0.f },
-					XMFLOAT3{ 0.f, 0.f, 0.f },
-					1.f, 50.f, 80.f);
-				m_lightSystem->SetLight(light);
-				auto object = make_shared<LightObject>(light);
-				object->SetPosition(XMFLOAT3{
-					static_cast<FLOAT>(x),
-					static_cast<FLOAT>(y),
-					static_cast<FLOAT>(z) });
-				object->SetTextureIndex(1);
-				m_objects.push_back(object);
-			}
-		}
-	}
+	//for (int x = -10; x <= 10; x += 10) {
+	//	for (int y = 0; y <= 20; y += 10) {
+	//		for (int z = -10; z <= 10; z += 10) {
+	//			auto light = make_shared<SpotLight>(
+	//				XMFLOAT3{ 0.7f, 0.7f, 0.7f },
+	//				XMFLOAT3{ 1.f, 0.f, 0.f },
+	//				XMFLOAT3{ 0.f, 0.f, 0.f },
+	//				1.f, 50.f, 80.f);
+	//			m_lightSystem->SetLight(light);
+	//			auto object = make_shared<LightObject>(light);
+	//			object->SetPosition(XMFLOAT3{
+	//				static_cast<FLOAT>(x),
+	//				static_cast<FLOAT>(y),
+	//				static_cast<FLOAT>(z) });
+	//			object->SetTextureIndex(1);
+	//			m_objects.push_back(object);
+	//		}
+	//	}
+	//}
 
 	m_instanceObject = make_unique<Instance>(device,
 		static_pointer_cast<Mesh<TextureVertex>>(m_meshes["CUBE"]), static_cast<UINT>(m_objects.size() + 1));//m_objects.size() + 1
-	m_instanceObject->SetObjects(m_objects);
+	//m_instanceObject->SetObjects(m_objects);
 	m_instanceObject->SetObject(m_player);
 	m_instanceObject->SetTexture(m_textures["CUBE"]);
 	m_instanceObject->SetMaterial(m_materials["CUBE"]);

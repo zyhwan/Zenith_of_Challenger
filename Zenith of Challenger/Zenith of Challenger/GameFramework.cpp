@@ -41,19 +41,27 @@ void CGameFramework::FrameAdvance()
 {
 	m_GameTimer.Tick(60); // FPS 측정
 
-	UINT fps = m_GameTimer.GetFPS();
-	if (fps > 0)
-	{
-		_stprintf_s(m_pszFrameRate, _T("%s - FPS: %u"), m_pszBaseTitle, fps);
-		SetWindowText(m_hWnd, m_pszFrameRate);
-	}
-
 	FLOAT deltaTime = m_GameTimer.GetElapsedTime();
 	deltaTime = max(min(deltaTime, 1.0f / 30.0f), 1.0f / 60.0f);
+
+	// FPS 및 플레이어 위치를 윈도우 타이틀바에 표시
+	std::wstringstream titleStream;
+	titleStream << L"Zenith of Challenger - FPS: " << m_GameTimer.GetFPS();
+
+	if (m_player)
+	{
+		XMFLOAT3 playerPos = m_player->GetPosition();
+		titleStream << L" | Pos: ("
+			<< fixed << setprecision(2)
+			<< playerPos.x << ", " << playerPos.y << ", " << playerPos.z << ")";
+	}
+
+	SetWindowText(m_hWnd, titleStream.str().c_str());
 
 	Update();
 	Render();
 }
+
 
 void CGameFramework::MouseEvent(HWND hWnd, FLOAT timeElapsed)
 {
@@ -416,22 +424,35 @@ void CGameFramework::ProcessInput()
 
 	m_commandList->Reset(m_commandAllocator.Get(), nullptr);
 
-	static bool isGameScene = false;
-
-	if (GetAsyncKeyState(VK_RETURN) & 0x0001) // Enter 키 입력 시 씬 전환
+	// 현재 활성화된 씬이 존재하는지 확인
+	auto currentScene = m_sceneManager->GetCurrentScene();
+	if (!currentScene)
 	{
-		if (isGameScene)
-		{
-			std::cout << "StartScene으로 전환" << std::endl;
-			m_sceneManager->ChangeScene("StartScene", m_device, m_commandList, m_rootSignature);
-		}
-		else
-		{
-			std::cout << "GameScene으로 전환" << std::endl;
-			m_sceneManager->ChangeScene("GameScene", m_device, m_commandList, m_rootSignature);
-		}
+		std::cout << "[ERROR] 현재 활성화된 씬이 없습니다! 입력을 받을 수 없습니다.\n";
+		return;
+	}
 
-		isGameScene = !isGameScene;
+	// 키 입력이 제대로 감지되지 않을 경우 대비하여 `GetAsyncKeyState` 사용
+	for (int key = 0x08; key <= 0xFE; key++) // 백스페이스(0x08)부터 시작
+	{
+		SHORT keyState = GetAsyncKeyState(key);
+		if (keyState & 0x8000) // 키가 눌려 있으면
+		{
+			currentScene->KeyboardEvent(WM_KEYDOWN, key);
+		}
+		else if (keyState & 0x0001) // 키가 눌렸다가 떼졌으면
+		{
+			currentScene->KeyboardEvent(WM_KEYUP, key);
+		}
+	}
+
+	// `PeekMessage()`로 메시지를 가져오는 기존 방식도 유지
+	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+	{
+		if (msg.message == WM_KEYDOWN || msg.message == WM_KEYUP)
+		{
+			currentScene->KeyboardEvent(msg.message, msg.wParam);
+		}
 	}
 
 	if (GetAsyncKeyState('Q') & 0x8000) {

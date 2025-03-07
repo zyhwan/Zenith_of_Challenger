@@ -75,6 +75,10 @@ void Scene::KeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 }
 
+void Scene::KeyboardEvent(UINT message, WPARAM wParam)
+{
+}
+
 void Scene::ClearSceneResources()
 {
 	std::cout << "Scene 리소스 완전 해제 중..." << std::endl;
@@ -90,5 +94,3 @@ void Scene::ClearSceneResources()
 		m_device->GetDeviceRemovedReason();
 	}
 }
-
-//임시 수정

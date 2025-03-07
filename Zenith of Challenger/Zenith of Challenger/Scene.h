@@ -30,6 +30,7 @@ public:
 
 	virtual void MouseEvent(UINT message, LPARAM lParam);
 	virtual void KeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void KeyboardEvent(UINT message, WPARAM wParam);
 
 	virtual void ClearSceneResources(); //리소스 완전 해제 함수 추가
 
