@@ -26,8 +26,8 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device,
 	{
 		auto gameObject = make_shared<GameObject>(device);
 		gameObject->SetMesh(fbxMesh);
-		gameObject->SetScale(XMFLOAT3{ 0.05f, 0.05f, 0.05f });
-		gameObject->SetPosition(XMFLOAT3{ 0.0f, -50.0f, 0.0f });
+		gameObject->SetScale(XMFLOAT3{ 0.01f, 0.01f, 0.01f }); // 원래 크기로 유지
+		gameObject->SetPosition(XMFLOAT3{ 0.0f, 0.0f, 0.0f }); // Y축 위치 조정
 		m_fbxObjects.push_back(gameObject);
 	}
 
@@ -157,7 +157,7 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device)
 
 	auto player = make_shared<Player>();  // 플레이어 객체 생성
 	player->SetScale(XMFLOAT3{ 1.f, 1.5f, 1.f });
-	player->SetPosition(XMFLOAT3{ 0.f, 0.f, 0.f });
+	player->SetPosition(XMFLOAT3{ 180.f, 180.f, -300.f });
 	player->SetTextureIndex(0);
 	// GameFramework에 player를 설정
 	gGameFramework->SetPlayer(player);
