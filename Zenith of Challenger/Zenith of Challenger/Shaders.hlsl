@@ -1,6 +1,9 @@
 cbuffer GameObject : register(b0)
 {
-    matrix g_worldMatrix : packoffset(c0);
+    matrix g_worldMatrix : packoffset(c0); // c0 ~ c3
+    float4 g_baseColor : packoffset(c4); // c4
+    int g_useTexture : packoffset(c5.x); // c5.x
+    float3 padding : packoffset(c5.y); // c5.y ~ c5.w
 };
 
 cbuffer Camera : register(b1)

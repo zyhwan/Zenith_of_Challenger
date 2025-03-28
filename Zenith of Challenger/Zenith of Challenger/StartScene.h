@@ -36,3 +36,8 @@ private:
     bool isTypingUsername; // 현재 아이디 입력 중인지 여부
     bool isLoginSuccess;   // 로그인 성공 여부
 };
+
+std::shared_ptr<Mesh<TextureVertex>> CreateScreenQuad(
+    const ComPtr<ID3D12Device>& device,
+    const ComPtr<ID3D12GraphicsCommandList>& commandList,
+    float width, float height, float z = 0.f);

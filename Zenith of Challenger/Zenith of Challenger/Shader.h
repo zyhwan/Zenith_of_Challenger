@@ -44,3 +44,10 @@ public:
 	FBXShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
 	~FBXShader() override = default;
 };
+
+class UIScreenShader : public Shader
+{
+public:
+	UIScreenShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
+	~UIScreenShader() override = default;
+};

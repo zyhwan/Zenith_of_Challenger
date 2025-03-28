@@ -68,4 +68,6 @@ protected:
 	shared_ptr<Terrain> m_terrain;
 
 	unique_ptr<Instance> m_instanceObject;
+
+	vector<shared_ptr<GameObject>> m_gameObjects; //StartScene 전용 멤버변수
 };

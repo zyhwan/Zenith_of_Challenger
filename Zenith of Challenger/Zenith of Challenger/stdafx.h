@@ -68,6 +68,19 @@ using namespace std;
 class CGameFramework;
 extern unique_ptr<CGameFramework> gGameFramework;
 
+
+inline void ThrowIfFailed(HRESULT hr)
+{
+	if (FAILED(hr))
+	{
+		OutputDebugStringA("DirectX 함수 실패!\n");
+		throw std::runtime_error("DirectX 함수 실패");
+	}
+}
+
+
+
+
 namespace Settings
 {
 	constexpr UINT DefaultWindowWidth = 1440;

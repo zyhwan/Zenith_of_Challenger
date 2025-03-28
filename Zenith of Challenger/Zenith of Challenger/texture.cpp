@@ -1,5 +1,6 @@
 #include "texture.h"
 #include "DDSTextureLoader12.h"
+#include "WICTextureLoader12.h" // 새로 추가 (WIC 사용 위해)
 
 Texture::Texture(const ComPtr<ID3D12Device>& device)
 {

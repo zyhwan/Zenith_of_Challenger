@@ -60,7 +60,10 @@ protected:
 
 struct ObjectData : public BufferBase
 {
-	XMFLOAT4X4 worldMatrix;
+	XMFLOAT4X4 worldMatrix;    // 64 bytes
+	XMFLOAT4 baseColor;        // 16 bytes
+	UINT useTexture;           // 4 bytes
+	XMFLOAT3 padding = {};     // 12 bytes → 총 32 bytes로 16바이트 정렬 유지
 };
 
 class GameObject : public Object
@@ -76,15 +79,20 @@ public:
 	void SetMesh(const shared_ptr<MeshBase>& mesh);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetMaterial(const shared_ptr<Material>& material);
+	void SetBaseColor(const XMFLOAT4& color);            // 추가
+	void SetUseTexture(bool use);                        // 추가
 
 	// 변환 행렬 설정 함수 추가
 	void SetWorldMatrix(const XMMATRIX& worldMatrix);
 protected:
-	shared_ptr<MeshBase>	m_mesh;
-	shared_ptr<Texture>		m_texture;
-	shared_ptr<Material>	m_material;
+	shared_ptr<MeshBase> m_mesh;
+	shared_ptr<Texture> m_texture;
+	shared_ptr<Material> m_material;
 
 	unique_ptr<UploadBuffer<ObjectData>> m_constantBuffer;
+
+	XMFLOAT4 m_baseColor{ 1.f, 1.f, 1.f, 1.f };           // 기본 색상
+	BOOL m_useTexture = FALSE;                           // 텍스처 사용 여부
 };
 
 class RotatingObject : public InstanceObject
@@ -128,7 +136,6 @@ private:
 	FLOAT m_theta;
 	const FLOAT m_radius;
 };
-
 
 class Terrain : public GameObject
 {

@@ -1,4 +1,4 @@
-#pragma shader_target 5.1
+#pragma shader_model 5_1
 
 #define MaxLight 30
 #define Directional 0

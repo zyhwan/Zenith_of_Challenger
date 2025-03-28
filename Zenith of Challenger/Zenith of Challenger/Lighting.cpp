@@ -39,7 +39,7 @@ void Light::SetStrength(XMFLOAT3 strength)
 }
 
 DirectionalLight::DirectionalLight() :
-	Light(Settings::Light::Directional, { 1.f, 1.f, 1.f }, { 0.f, -1.f, 0.f })
+	Light(Settings::Light::Directional, { 0.3f, 0.3f, 0.3f }, { 0.f, -1.f, 0.f }) // ∞≠µµ ≥∑√„
 {
 }
 
