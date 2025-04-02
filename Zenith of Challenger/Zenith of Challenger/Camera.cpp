@@ -29,6 +29,18 @@ void Camera::SetLens(FLOAT fovy, FLOAT aspect, FLOAT minZ, FLOAT maxZ)
 	XMStoreFloat4x4(&m_projectionMatrix, XMMatrixPerspectiveFovLH(fovy, aspect, minZ, maxZ));
 }
 
+void Camera::SetPosition(const XMFLOAT3& position)
+{
+	m_eye = position;
+	UpdateBasis();
+}
+
+void Camera::SetLookAt(const XMFLOAT3& lookAt)
+{
+	m_at = lookAt;
+	UpdateBasis();
+}
+
 XMFLOAT3 Camera::GetEye() const
 {
 	return m_eye;
@@ -106,7 +118,7 @@ void ThirdPersonCamera::ZoomOut()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 QuarterViewCamera::QuarterViewCamera(const ComPtr<ID3D12Device>& device)
-	: Camera(device), m_radius(25.0f), m_phi(XM_PIDIV4), m_theta(-45.0f) //m_phi(XM_PIDIV4)
+	: Camera(device), m_radius(50.0f), m_phi(XM_PIDIV4), m_theta(-45.0f) //m_phi(XM_PIDIV4)
 {
 	m_offset = XMFLOAT3(-18.0f, 20.0f, -18.0f);  // 대각선 오프셋 적용
 }
@@ -154,3 +166,5 @@ void QuarterViewCamera::ZoomOut()
 	m_radius = min(40.0f, m_radius + 2.0f);  // 최대 거리 제한
 	UpdateEye(m_at);  // 줌 변경 후 카메라 업데이트
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

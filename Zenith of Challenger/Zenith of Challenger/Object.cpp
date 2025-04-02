@@ -151,6 +151,11 @@ void GameObject::SetWorldMatrix(const XMMATRIX& worldMatrix)
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
 }
 
+void GameObject::SetSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle)
+{
+	m_srvHandle = srvHandle;
+}
+
 
 RotatingObject::RotatingObject() : InstanceObject()
 {

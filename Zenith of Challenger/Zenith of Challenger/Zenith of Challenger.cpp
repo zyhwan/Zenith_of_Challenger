@@ -153,7 +153,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_ACTIVATE:
         gGameFramework->SetActive(static_cast<BOOL>(wParam));
-        ShowCursor(FALSE);  // 마우스 커서 숨김
+        //ShowCursor(FALSE);  // 마우스 커서 숨김
         break;
     case WM_SIZE:
     case WM_LBUTTONDOWN:
@@ -163,6 +163,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         gGameFramework->MouseEvent(message, lParam);
         break;
     case WM_MOUSEMOVE:
+        gGameFramework->MouseEvent(message, lParam);
     case WM_KEYDOWN:
     case WM_KEYUP:
         break;

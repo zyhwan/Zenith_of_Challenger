@@ -41,6 +41,8 @@ public:
     // SceneManager와 RootSignature를 반환하는 함수 추가
     SceneManager* GetSceneManager() { return m_sceneManager.get(); }
     ComPtr<ID3D12RootSignature> GetRootSignature() { return m_rootSignature; }
+
+
 private:
     void InitDirect3D();
 
@@ -61,7 +63,6 @@ private:
     void Render();
 
     void ProcessInput();   // 키 입력 체크
-
 private:
     static const UINT m_nSwapChainBuffers = 2;
 
@@ -103,4 +104,6 @@ private:
 
     unique_ptr<SceneManager> m_sceneManager;
     shared_ptr<Player> m_player;  // 플레이어 객체 추가 GameFramework가 Player를 관리
+
+    bool m_StartButton = false;
 };

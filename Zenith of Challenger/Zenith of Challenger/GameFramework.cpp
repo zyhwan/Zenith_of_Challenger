@@ -35,6 +35,9 @@ void CGameFramework::OnCreate(HINSTANCE hInstance, HWND hMainWnd)
 void CGameFramework::OnDestroy()
 {
 	WaitForGpuComplete();
+	if (m_sceneManager) {
+		m_sceneManager->Release();  // 또는 내부 씬 release 처리
+	}
 }
 
 void CGameFramework::FrameAdvance()
@@ -75,6 +78,11 @@ void CGameFramework::KeyboardEvent(FLOAT timeElapsed)
 
 void CGameFramework::MouseEvent(UINT message, LPARAM lParam)
 {
+	if (m_sceneManager && m_sceneManager->GetCurrentScene())
+	{
+		m_sceneManager->GetCurrentScene()->MouseEvent(message, lParam);
+		
+	}
 }
 
 void CGameFramework::KeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -315,6 +323,8 @@ void CGameFramework::BuildObjects()
 
 	m_sceneManager = make_unique<SceneManager>();
 
+	//CreateMiniMapResources();
+
 	// StartScene 추가 (스카이박스만 표시)
 	auto startScene = make_shared<StartScene>();
 	m_sceneManager->AddScene("StartScene", startScene);
@@ -357,7 +367,28 @@ void CGameFramework::Update()
 	}
 	ProcessInput();
 
-	if (m_sceneManager) m_sceneManager->Update(m_GameTimer.GetElapsedTime());
+	if (m_sceneManager) {
+		m_sceneManager->Update(m_GameTimer.GetElapsedTime());
+
+		m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+
+		// StartScene에서 씬 전환 요청이 있는지 확인
+		auto startScene = dynamic_pointer_cast<StartScene>(m_sceneManager->GetCurrentScene());
+		if (startScene && startScene->IsStartButtonClicked())
+		{
+			std::cout << "GameFramework: GameScene으로 전환 실행\n";
+			m_sceneManager->ChangeScene("GameScene", m_device, m_commandList, m_rootSignature);
+			startScene->ResetStartButtonClicked();
+		}
+
+		m_commandList->Close();
+		ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+		m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+
+		WaitForGpuComplete();
+	}
+
+
 	if (m_player) m_player->Update(m_GameTimer.GetElapsedTime());
 }
 
@@ -465,4 +496,3 @@ void CGameFramework::ProcessInput()
 
 	WaitForGpuComplete();
 }
-

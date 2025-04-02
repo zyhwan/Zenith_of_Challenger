@@ -61,7 +61,9 @@ protected:
 
 	unique_ptr<LightSystem> m_lightSystem;
 	unique_ptr<Sun>		m_sun;
+
 	shared_ptr<Camera> m_camera;
+
 	shared_ptr<Player> m_player;
 	vector<shared_ptr<InstanceObject>> m_objects;
 	shared_ptr<GameObject> m_skybox;
@@ -69,5 +71,7 @@ protected:
 
 	unique_ptr<Instance> m_instanceObject;
 
-	vector<shared_ptr<GameObject>> m_gameObjects; //StartScene 전용 멤버변수
+	vector<shared_ptr<GameObject>> m_StartSceneObjects; //StartScene 전용 멤버변수
+	vector<shared_ptr<GameObject>> m_SelectSceneObjects; //StartScene Select전용 멤버변수
+	vector<shared_ptr<GameObject>> m_startBar;
 };

@@ -86,3 +86,12 @@ void SceneManager::ReleaseUploadBuffer()
         m_currentScene->ReleaseUploadBuffer();
     }
 }
+
+void SceneManager::Release()
+{
+    if (m_currentScene)
+    {
+        m_currentScene.reset();
+    }
+    m_scenes.clear();
+}

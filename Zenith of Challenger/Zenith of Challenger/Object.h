@@ -84,6 +84,8 @@ public:
 
 	// 변환 행렬 설정 함수 추가
 	void SetWorldMatrix(const XMMATRIX& worldMatrix);
+
+	void SetSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 protected:
 	shared_ptr<MeshBase> m_mesh;
 	shared_ptr<Texture> m_texture;
@@ -93,6 +95,8 @@ protected:
 
 	XMFLOAT4 m_baseColor{ 1.f, 1.f, 1.f, 1.f };           // 기본 색상
 	BOOL m_useTexture = FALSE;                           // 텍스처 사용 여부
+
+	D3D12_GPU_DESCRIPTOR_HANDLE m_srvHandle{};  // 텍스처 SRV 핸들
 };
 
 class RotatingObject : public InstanceObject

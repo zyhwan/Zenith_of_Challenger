@@ -208,5 +208,8 @@
     <FxCompile Include="FBXShader.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
+    <FxCompile Include="UIScreenShader.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

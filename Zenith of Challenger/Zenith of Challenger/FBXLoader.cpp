@@ -17,10 +17,11 @@ bool FBXLoader::LoadFBXModel(const std::string& filename)
     std::cout << "FBX 메시 개수 : " << scene->mNumMeshes << std::endl;
 
     // Y축 기준 180도 회전 행렬 추가
-    XMMATRIX rootRotation = XMMatrixRotationY(XM_PI); // 또는 XMConvertToRadians(180.0f)
-    XMMATRIX identityMatrix = rootRotation;
+    XMMATRIX rootRotation = XMMatrixRotationY(XM_PI); // 또는 XMConvertToRadians(180.0f) XM_PI
+    XMMATRIX scaleXZ = XMMatrixScaling(5.0f, 5.0f, 5.0f); // ← XZ만 스케일 확대
+    XMMATRIX rootTransform = scaleXZ * rootRotation;
 
-    ProcessNode(scene->mRootNode, scene, identityMatrix);
+    ProcessNode(scene->mRootNode, scene, rootTransform);
 
     return true;
 }
@@ -56,39 +57,19 @@ void FBXLoader::ProcessNode(aiNode* node, const aiScene* scene, const XMMATRIX& 
 std::shared_ptr<GameObject> FBXLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, const XMMATRIX& globalTransform)
 {
     std::vector<TextureVertex> vertices;
-    float scaleFactor = 1.0f; // 지금은 크기 조정 없이
+    float scaleFactor = 1.0f;
 
-    for (UINT i = 0; i < mesh->mNumVertices; i++)
+    for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
         TextureVertex vertex;
+        XMFLOAT3 pos = { -mesh->mVertices[i].x * scaleFactor, mesh->mVertices[i].y * scaleFactor, mesh->mVertices[i].z * scaleFactor };
+        XMVECTOR transformedPos = XMVector3Transform(XMLoadFloat3(&pos), globalTransform);
+        XMStoreFloat3(&vertex.position, transformedPos);
 
-        // 로컬 위치 로드
-        XMFLOAT3 localPos = {
-            mesh->mVertices[i].x * scaleFactor,
-            mesh->mVertices[i].y * scaleFactor,
-            mesh->mVertices[i].z * scaleFactor
-        };
+        XMFLOAT3 normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
+        XMVECTOR transformedNormal = XMVector3TransformNormal(XMLoadFloat3(&normal), globalTransform);
+        XMStoreFloat3(&vertex.normal, XMVector3Normalize(transformedNormal));
 
-        // 글로벌 변환 적용
-        XMVECTOR pos = XMLoadFloat3(&localPos);
-        pos = XMVector3Transform(pos, globalTransform);
-        XMStoreFloat3(&vertex.position, pos);
-
-        // 노멀
-        if (mesh->HasNormals())
-        {
-            XMFLOAT3 normal = {
-                mesh->mNormals[i].x,
-                mesh->mNormals[i].y,
-                mesh->mNormals[i].z
-            };
-            XMVECTOR n = XMLoadFloat3(&normal);
-            n = XMVector3TransformNormal(n, globalTransform);
-            n = XMVector3Normalize(n);
-            XMStoreFloat3(&vertex.normal, n);
-        }
-
-        // UV
         vertex.uv = mesh->HasTextureCoords(0) ?
             XMFLOAT2(mesh->mTextureCoords[0][i].x, 1.0f - mesh->mTextureCoords[0][i].y) :
             XMFLOAT2(0.0f, 0.0f);
@@ -98,12 +79,24 @@ std::shared_ptr<GameObject> FBXLoader::ProcessMesh(aiMesh* mesh, const aiScene* 
 
     auto device = gGameFramework->GetDevice();
     auto commandList = gGameFramework->GetCommandList();
-    auto fbxMesh = std::make_shared<Mesh<TextureVertex>>(device, commandList, vertices);
-    m_meshes.push_back(fbxMesh);
+    auto meshPtr = std::make_shared<Mesh<TextureVertex>>(device, commandList, vertices);
+    m_meshes.push_back(meshPtr);
+
+    // 텍스처 로드
+    auto texture = std::make_shared<Texture>(device);
+    texture->LoadTexture(device, commandList, L"Image/Base Map.dds", RootParameter::Texture);
+    texture->CreateShaderVariable(device); // <- 꼭 필요함!!
+
+    // 기본 색상은 백업 용도 (셰이더에서 텍스처 사용 시 무시됨)
+    XMFLOAT4 baseColor = XMFLOAT4(1, 1, 1, 1);
 
     auto gameObject = std::make_shared<GameObject>(device);
-    gameObject->SetMesh(fbxMesh);
-    gameObject->SetWorldMatrix(XMMatrixIdentity()); // 글로벌 위치가 버텍스에 적용됐기 때문에 단위행렬
+    gameObject->SetMesh(meshPtr);
+    gameObject->SetWorldMatrix(globalTransform);
+
+    gameObject->SetTexture(texture);         // 텍스처 설정
+    gameObject->SetUseTexture(true);         // 셰이더에서 g_texture 사용
+    gameObject->SetBaseColor(baseColor);     // 조명 계산 백업용
 
     return gameObject;
 }

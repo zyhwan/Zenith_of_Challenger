@@ -52,6 +52,13 @@ void GameScene::Update(FLOAT timeElapsed)
 		object->Update(timeElapsed);
 	}
 	m_skybox->SetPosition(m_camera->GetEye());
+
+	// 플레이어 위치 가져오기
+	if (gGameFramework->GetPlayer())
+	{
+		const XMFLOAT3& playerPos = gGameFramework->GetPlayer()->GetPosition();
+	}
+
 }
 
 void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -96,6 +103,9 @@ void GameScene::BuildShaders(const ComPtr<ID3D12Device>& device,
 	//FBX 전용 쉐이더 추가
 	auto fbxShader = make_shared<FBXShader>(device, rootSignature);
 	m_shaders.insert({ "FBX", fbxShader });
+
+	auto uiShader = make_shared<UIScreenShader>(device, rootSignature);
+	m_shaders.insert({ "UI", uiShader });
 }
 
 void GameScene::BuildMeshes(const ComPtr<ID3D12Device>& device,
@@ -135,6 +145,12 @@ void GameScene::BuildTextures(const ComPtr<ID3D12Device>& device,
 
 	terrainTexture->CreateShaderVariable(device);
 	m_textures.insert({ "TERRAIN", terrainTexture });
+
+	// BuildTextures 내부에 추가
+	auto fbxTexture = make_shared<Texture>(device);
+	fbxTexture->LoadTexture(device, commandList, TEXT("Image/Base Map.dds"), RootParameter::Texture);
+	fbxTexture->CreateShaderVariable(device);
+	m_textures.insert({ "FBX", fbxTexture });
 }
 
 void GameScene::BuildMaterials(const ComPtr<ID3D12Device>& device,
@@ -153,11 +169,11 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device)
 	m_lightSystem->SetLight(sunLight);
 
 	m_sun = make_unique<Sun>(sunLight);
-	m_sun->SetStrength(XMFLOAT3{ 1.3f, 1.2f, 1.2f });
+	m_sun->SetStrength(XMFLOAT3{ 1.0f, 1.0f, 1.0f }); //디렉셔널 라이트 세기 줄이기
 
 	auto player = make_shared<Player>();  // 플레이어 객체 생성
 	player->SetScale(XMFLOAT3{ 1.f, 1.5f, 1.f });
-	player->SetPosition(XMFLOAT3{ 180.f, 180.f, -300.f });
+	player->SetPosition(XMFLOAT3{ -180.f, 55.f, 180.f });
 	player->SetTextureIndex(0);
 	// GameFramework에 player를 설정
 	gGameFramework->SetPlayer(player);
@@ -194,6 +210,7 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device)
 
 	m_camera = make_shared<QuarterViewCamera>(device);
 	m_camera->SetLens(0.25 * XM_PI, gGameFramework->GetAspectRatio(), 0.1f, 1000.f);
+
 	m_player->SetCamera(m_camera);
 
 	m_skybox = make_shared<GameObject>(device);
@@ -205,5 +222,11 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device)
 	m_terrain->SetTexture(m_textures["TERRAIN"]);
 	m_terrain->SetScale(XMFLOAT3{ 5.f, 0.25f, 5.f });
 	m_terrain->SetPosition(XMFLOAT3{ 0.f, -100.f, 0.f });
+
+
+	for (auto& obj : m_fbxObjects)
+	{
+		obj->SetTexture(m_textures["FBX"]);
+	}
 
 }
