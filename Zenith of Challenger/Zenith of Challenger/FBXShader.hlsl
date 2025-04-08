@@ -12,9 +12,9 @@ struct PSInput
     float4 Position : SV_POSITION;
     float3 Normal : NORMAL;
     float2 TexCoord : TEXCOORD;
+    float3 WorldPos : WORLDPOS;
 };
 
-// 정점 셰이더 (FBX 모델용)
 PSInput VSMain(VSInput input)
 {
     PSInput output;
@@ -22,24 +22,27 @@ PSInput VSMain(VSInput input)
     float4 worldPosition = mul(float4(input.Position, 1.0f), g_worldMatrix);
     float4 viewPosition = mul(worldPosition, g_viewMatrix);
     output.Position = mul(viewPosition, g_projectionMatrix);
-    
-    // 노멀 변환 적용
-    output.Normal = normalize(mul(input.Normal, (float3x3) g_worldMatrix));
 
-    // UV 좌표 변환 (DirectX 좌표계 보정)
-    output.TexCoord = float2(input.TexCoord.x, 1.0f - input.TexCoord.y);
+    output.WorldPos = worldPosition.xyz;
+    output.Normal = normalize(mul(input.Normal, (float3x3) g_worldMatrix));
+    output.TexCoord = float2(input.TexCoord.x, 1.0f - input.TexCoord.y); // UV 뒤집기
 
     return output;
 }
 
-// 픽셀 셰이더 (텍스처 적용)
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    float4 textureColor = g_texture[0].Sample(g_sampler, input.TexCoord);
+    float4 texColor = g_texture[0].Sample(g_sampler, input.TexCoord);
+
+    // 색상이 너무 어두우면 fallback 색상
+    if (texColor.r + texColor.g + texColor.b < 0.01f)
+    {
+        texColor.rgb = float3(1.0f, 0.0f, 1.0f); // 매지엔타
+    }
     
     float3 normal = normalize(input.Normal);
-    float3 lightDir = normalize(float3(0.5f, -1.0f, 0.5f));
-    float lightIntensity = max(dot(normal, lightDir), 0.2f);
-    
-    return float4(textureColor.rgb * lightIntensity, textureColor.a);
+    float3 toEye = normalize(g_cameraPosition - input.WorldPos);
+    MaterialData matData = g_material[0];
+
+    return Lighting(input.WorldPos, normal, toEye, texColor, matData);
 }

@@ -40,7 +40,7 @@ using namespace DirectX::PackedVector;
 using Microsoft::WRL::ComPtr;
 
 #define FRAME_BUFFER_WIDTH		1440
-#define FRAME_BUFFER_HEIGHT		800
+#define FRAME_BUFFER_HEIGHT		1080
 
 //#define _WITH_CB_GAMEOBJECT_32BIT_CONSTANTS
 //#define _WITH_CB_GAMEOBJECT_ROOT_DESCRIPTOR
@@ -63,10 +63,22 @@ using Microsoft::WRL::ComPtr;
 #include <iostream>
 #include <filesystem>  //추가: 파일 시스템 헤더 포함
 
+
 using namespace std;
 
 class CGameFramework;
 extern unique_ptr<CGameFramework> gGameFramework;
+
+
+inline void ThrowIfFailed(HRESULT hr)
+{
+	if (FAILED(hr))
+	{
+		OutputDebugStringA("DirectX 함수 실패!\n");
+		throw std::runtime_error("DirectX 함수 실패");
+	}
+}
+
 
 namespace Settings
 {
@@ -102,12 +114,19 @@ namespace RootParameter
 	constexpr UINT Instance = 4;
 	constexpr UINT TextureCube = 5;
 	constexpr UINT Texture = 6;
+	constexpr UINT BoneMatrix = 7;
+	constexpr UINT LightingMaterial = 8;
+	constexpr UINT LightingLight = 9;
+
+	constexpr UINT Count = 10;
 }
 
 namespace DescriptorRange
 {
 	constexpr UINT TextureCube = 0;
 	constexpr UINT Texture = 1;
+	constexpr UINT BoneMatrix = 2; 
+	constexpr UINT Count = 3;
 }
 
 

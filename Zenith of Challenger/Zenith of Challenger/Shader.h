@@ -10,7 +10,7 @@ public:
 	Shader() = default;
 	virtual ~Shader() = default;
 
-	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 
 protected:
 	ComPtr<ID3D12PipelineState> m_pipelineState;
@@ -43,4 +43,18 @@ class FBXShader : public Shader
 public:
 	FBXShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
 	~FBXShader() override = default;
+};
+
+class UIScreenShader : public Shader
+{
+public:
+	UIScreenShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
+	~UIScreenShader() override = default;
+};
+
+class CharacterShader : public Shader
+{
+public:
+	CharacterShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
+	~CharacterShader() override = default;
 };

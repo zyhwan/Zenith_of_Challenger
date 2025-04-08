@@ -39,7 +39,6 @@ XMFLOAT3 Object::GetPosition() const
 
 void Object::UpdateWorldMatrix()
 {
-	// 월드 행렬 업데이트
 	XMMATRIX scaleMatrix = XMMatrixScaling(m_scale.x, m_scale.y, m_scale.z);
 	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.0f);
 	XMMATRIX translationMatrix = XMMatrixTranslation(m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43);
@@ -95,13 +94,15 @@ GameObject::GameObject(const ComPtr<ID3D12Device>& device) : Object()
 
 void GameObject::Update(FLOAT timeElapsed)
 {
-
 }
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
 	UpdateShaderVariable(commandList);
-	if (m_texture) m_texture->UpdateShaderVariable(commandList); // 텍스처 바인딩
+
+	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureIndex);
+	if (m_material) m_material->UpdateShaderVariable(commandList);
+
 	m_mesh->Render(commandList);
 }
 
@@ -110,13 +111,17 @@ void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& c
 	ObjectData buffer;
 	XMStoreFloat4x4(&buffer.worldMatrix,
 		XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix)));
-	m_constantBuffer->Copy(buffer);
+	buffer.baseColor = m_baseColor;
+	buffer.useTexture = m_useTexture;
+	buffer.textureIndex = m_textureIndex;
+	buffer.padding = XMFLOAT2(0.f, 0.f);
 
+	m_constantBuffer->Copy(buffer);
 	m_constantBuffer->UpdateRootConstantBuffer(commandList);
-	if (m_texture) m_texture->UpdateShaderVariable(commandList);
+
+	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureIndex);
 	if (m_material) m_material->UpdateShaderVariable(commandList);
 }
-
 
 void GameObject::SetMesh(const shared_ptr<MeshBase>& mesh)
 {
@@ -126,6 +131,7 @@ void GameObject::SetMesh(const shared_ptr<MeshBase>& mesh)
 void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 {
 	m_texture = texture;
+	m_useTexture = TRUE;
 }
 
 void GameObject::SetMaterial(const shared_ptr<Material>& material)
@@ -133,9 +139,24 @@ void GameObject::SetMaterial(const shared_ptr<Material>& material)
 	m_material = material;
 }
 
+void GameObject::SetBaseColor(const XMFLOAT4& color)
+{
+	m_baseColor = color;
+}
+
+void GameObject::SetUseTexture(bool use)
+{
+	m_useTexture = use;
+}
+
 void GameObject::SetWorldMatrix(const XMMATRIX& worldMatrix)
 {
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
+}
+
+void GameObject::SetSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle)
+{
+	m_srvHandle = srvHandle;
 }
 
 
@@ -160,7 +181,6 @@ LightObject::LightObject(const shared_ptr<SpotLight>& light) :
 
 void LightObject::Update(FLOAT timeElapsed)
 {
-	// 디버깅: 광원의 위치 및 방향 고정
 	m_light->SetPosition(GetPosition());
 	m_light->SetDirection(Vector3::Normalize(m_front));
 }
@@ -177,26 +197,21 @@ void Sun::SetStrength(XMFLOAT3 strength)
 
 void Sun::Update(FLOAT timeElapsed)
 {
-	// 고정된 위치를 설정합니다. 필요에 따라 값을 변경하세요.
 	XMFLOAT3 fixedPosition{
-		0.0f,            // X축 위치 (고정된 값)
-		m_radius,        // Y축 위치 (하늘의 고정된 높이)
-		0.0f             // Z축 위치 (고정된 값)
+		0.0f,
+		m_radius,
+		0.0f
 	};
 
-	// 광원의 위치를 고정된 위치로 설정합니다.
 	SetPosition(fixedPosition);
 
 	XMFLOAT3 fixedDirection{
-		0.0f,   // X축 방향
-		-1.0f,  // Y축 방향 (아래를 가리킴)
-		0.0f    // Z축 방향
+		0.0f,
+		-1.0f,
+		0.0f
 	};
 
-	// 광원의 방향을 고정된 방향으로 설정합니다.
 	m_light->SetDirection(fixedDirection);
-
-	// 광원의 세기를 항상 일정하게 유지합니다.
 	m_light->SetStrength(m_strength);
 }
 

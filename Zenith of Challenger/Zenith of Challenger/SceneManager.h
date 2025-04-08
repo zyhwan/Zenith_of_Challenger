@@ -18,6 +18,7 @@ public:
     void Update(float deltaTime);
     void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList);
     void ReleaseUploadBuffer();
+    void Release();
 
     shared_ptr<Scene> GetCurrentScene() const { return m_currentScene; }
 

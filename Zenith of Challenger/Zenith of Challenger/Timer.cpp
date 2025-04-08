@@ -29,18 +29,24 @@ void CGameTimer::Tick(float fLockFPS)
     QueryPerformanceCounter((LARGE_INTEGER*)&m_nCurrentPerformanceCounter);
     fTimeElapsed = float((m_nCurrentPerformanceCounter - m_nLastPerformanceCounter) * m_fTimeScale);
 
-    if (fLockFPS > 0.0f)
+    // FPS 제한 적용 (기본 60FPS 제한)
+    if (fLockFPS <= 0.0f) fLockFPS = 60.0f;  // 최소 60FPS 제한
+
+    while (fTimeElapsed < (1.0f / fLockFPS))
     {
-        while (fTimeElapsed < (1.0f / fLockFPS))
-        {
-            QueryPerformanceCounter((LARGE_INTEGER*)&m_nCurrentPerformanceCounter);
-            fTimeElapsed = float((m_nCurrentPerformanceCounter - m_nLastPerformanceCounter) * m_fTimeScale);
-        }
+        QueryPerformanceCounter((LARGE_INTEGER*)&m_nCurrentPerformanceCounter);
+        fTimeElapsed = float((m_nCurrentPerformanceCounter - m_nLastPerformanceCounter) * m_fTimeScale);
     }
+
+    // timeElapsed 값이 갑자기 튀는 것을 방지 (최소/최대값 적용)
+    const float minElapsed = 1.0f / 200.0f;  // 최소 200FPS (0.005s)
+    const float maxElapsed = 1.0f / 30.0f;   // 최대 30FPS (0.033s)
+    fTimeElapsed = max(min(fTimeElapsed, maxElapsed), minElapsed);
 
     m_nLastPerformanceCounter = m_nCurrentPerformanceCounter;
     m_fTimeElapsed = fTimeElapsed;
 }
+
 
 
 unsigned long CGameTimer::GetFrameRate(LPTSTR lpszString, int nCharacters)

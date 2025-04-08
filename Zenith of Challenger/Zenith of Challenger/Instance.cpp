@@ -28,7 +28,6 @@ void Instance::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& com
 		m_instanceBuffer->Copy(buffer, i++);
 	}
 	m_instanceBuffer->UpdateRootShaderResource(commandList);
-	if (m_texture) m_texture->UpdateShaderVariable(commandList);
 	if (m_material) m_material->UpdateShaderVariable(commandList);
 }
 

@@ -23,6 +23,9 @@ public:
 	virtual void RotateYaw(FLOAT radian) = 0;
 
 	void SetLens(FLOAT fovy, FLOAT aspect, FLOAT minZ, FLOAT maxZ);
+	// Camera.h (protected or public에 추가)
+	void SetPosition(const XMFLOAT3& position);
+	void SetLookAt(const XMFLOAT3& lookAt);
 
 	XMFLOAT3 GetEye() const;
 	XMFLOAT3 GetU() const;
@@ -92,4 +95,30 @@ private:
 	FLOAT m_theta;   // 카메라의 좌/우 회전 (플레이어 따라감)
 
 	XMFLOAT3 m_offset; // 플레이어와의 상대적 위치
+};
+
+class TopViewCamera : public Camera
+{
+public:
+	TopViewCamera(const ComPtr<ID3D12Device>& device)
+		: Camera(device), m_height(50.0f), m_distance(1.0f) {
+	}
+	~TopViewCamera() = default;
+
+	void Update(FLOAT timeElapsed) override {}
+	void UpdateEye(XMFLOAT3 position) override
+	{
+		SetPosition(XMFLOAT3(position.x, position.y + m_height, position.z));
+		SetLookAt(position);
+	}
+
+	void RotatePitch(FLOAT radian) override {}
+	void RotateYaw(FLOAT radian) override {}
+
+	void ZoomIn() override { m_height = max(10.0f, m_height - 5.0f); }
+	void ZoomOut() override { m_height = min(200.0f, m_height + 5.0f); }
+
+private:
+	float m_height;  // 고도 (Y축)
+	float m_distance; // 확대/축소 시 사용
 };

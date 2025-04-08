@@ -20,6 +20,7 @@ public:
 
     virtual void Update(FLOAT timeElapsed);
     virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+    virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 
     virtual void BuildShaders(const ComPtr<ID3D12Device>& device,
         const ComPtr<ID3D12GraphicsCommandList>& commandList,
@@ -34,6 +35,7 @@ public:
 
 private:
     shared_ptr<FBXLoader> m_fbxLoader; // FBX 로더 추가
-    vector<shared_ptr<Mesh<TextureVertex>>> m_fbxMeshes; // FBX에서 로드한 메쉬 저장
+    shared_ptr<FBXLoader> m_playerLoader;
+    vector<shared_ptr<MeshBase>> m_fbxMeshes; // FBX에서 로드한 메쉬 저장
     vector<shared_ptr<GameObject>> m_fbxObjects; // FBX 모델용 GameObject 리스트 추가
 };

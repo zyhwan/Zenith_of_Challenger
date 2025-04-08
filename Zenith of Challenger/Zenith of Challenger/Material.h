@@ -21,6 +21,10 @@ public:
 
 	void SetMaterial(MaterialData material);
 	void SetMaterial(XMFLOAT3 fresnelR0, FLOAT roughness, XMFLOAT3 ambient);
+	void SetAmbient(const XMFLOAT3& ambient);
+	void SetFresnelR0(const XMFLOAT3& fresnelR0);
+	void SetRoughness(float roughness);
+
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device);
 
 private:
