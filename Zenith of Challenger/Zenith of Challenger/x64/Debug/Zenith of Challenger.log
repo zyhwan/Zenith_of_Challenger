@@ -1,5 +1,2 @@
-﻿  GameScene.cpp
-C:\Users\User\Desktop\Zenith of Challenger\Zenith_of_Challenger\Zenith of Challenger\Zenith of Challenger\GameScene.cpp(181,59): warning C4305: '인수': 'double'에서 'float'(으)로 잘립니다.
-  Player.cpp
-  코드를 생성하고 있습니다...
+﻿  FBXLoader.cpp
   Zenith of Challenger.vcxproj -> C:\Users\User\Desktop\Zenith of Challenger\Zenith_of_Challenger\Zenith of Challenger\x64\Debug\Zenith of Challenger.exe
