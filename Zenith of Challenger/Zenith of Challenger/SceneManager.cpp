@@ -32,6 +32,8 @@ void SceneManager::ChangeScene(const std::string& name, const ComPtr<ID3D12Devic
         {
             std::cout << "씬 해제 중: " << name << std::endl;
 
+            gGameFramework->WaitForGpuComplete(); // 추가
+
             //모든 리소스 해제
             m_currentScene->ReleaseUploadBuffer();
             m_currentScene->ClearSceneResources(); // 추가적으로 해제
@@ -75,6 +77,7 @@ void SceneManager::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
     if (m_currentScene)
     {
+        m_currentScene->PreRender(commandList);
         m_currentScene->Render(commandList);
     }
 }

@@ -36,6 +36,9 @@
     <Filter Include="소스 파일\Model Load">
       <UniqueIdentifier>{b1813ef4-e10a-4ca6-b2fb-29e1ac38f796}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Animation">
+      <UniqueIdentifier>{5e86258f-e176-4da3-9fb0-e078e446493f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameFramework.h">
@@ -113,6 +116,12 @@
     <ClInclude Include="FBXLoader.h">
       <Filter>소스 파일\Model Load</Filter>
     </ClInclude>
+    <ClInclude Include="Animation.h">
+      <Filter>소스 파일\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="d3dUtil.h">
+      <Filter>외부 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Zenith of Challenger.cpp">
@@ -175,6 +184,12 @@
     <ClCompile Include="FBXLoader.cpp">
       <Filter>소스 파일\Model Load</Filter>
     </ClCompile>
+    <ClCompile Include="Animation.cpp">
+      <Filter>소스 파일\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="d3dUtil.cpp">
+      <Filter>외부 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Zenith of Challenger.rc">
@@ -209,6 +224,9 @@
       <Filter>셰이더 파일</Filter>
     </FxCompile>
     <FxCompile Include="UIScreenShader.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Character.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
   </ItemGroup>

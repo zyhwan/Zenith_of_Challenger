@@ -31,6 +31,8 @@ public:
 
     ComPtr<ID3D12Device> GetDevice() { return m_device; }
     ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return m_commandList; }
+    ComPtr<ID3D12CommandAllocator> GetCommandAllocator() { return m_commandAllocator; }
+    ComPtr<ID3D12CommandQueue> GetCommandQueue() const { return m_commandQueue; }
 
     // Player 객체 가져오기
     shared_ptr<Player> GetPlayer() { return m_player; }
@@ -42,7 +44,17 @@ public:
     SceneManager* GetSceneManager() { return m_sceneManager.get(); }
     ComPtr<ID3D12RootSignature> GetRootSignature() { return m_rootSignature; }
 
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCpuSrvHandle() const;
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGpuSrvHandle() const;
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHeapStart() const;
+    UINT GetDescriptorSize() const;
 
+    ComPtr<ID3D12DescriptorHeap> GetDescriptorHeap() const { return m_cbvSrvUavHeap; }
+
+    std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> AllocateDescriptorHeapSlot();
+    UINT GetCurrentSRVOffset() const { return m_srvHeapOffset; }
+
+    void WaitForGpuComplete();
 private:
     void InitDirect3D();
 
@@ -55,9 +67,10 @@ private:
     void CreateRenderTargetView();
     void CreateDepthStencilView();
     void CreateRootSignature();
+    void CreateDescriptorHeaps();
+    void HandleSceneTransition();
 
     void BuildObjects();
-    void WaitForGpuComplete();
 
     void Update();
     void Render();
@@ -106,4 +119,13 @@ private:
     shared_ptr<Player> m_player;  // 플레이어 객체 추가 GameFramework가 Player를 관리
 
     bool m_StartButton = false;
+
+    // [SRV 힙 관련 멤버 변수 추가]
+    ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
+    D3D12_CPU_DESCRIPTOR_HANDLE m_cbvSrvUavCpuDescriptorStartHandle{};
+    D3D12_GPU_DESCRIPTOR_HANDLE m_cbvSrvUavGpuDescriptorStartHandle{};
+    UINT m_cbvSrvUavDescriptorSize = 0;
+
+    UINT m_srvHeapOffset = 0;// 다음에 쓸 슬롯 인덱스
+    bool m_shouldTransition = false;
 };

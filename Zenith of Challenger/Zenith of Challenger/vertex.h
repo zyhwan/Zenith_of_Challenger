@@ -29,3 +29,17 @@ struct DetailVertex : public VertexBase
 	XMFLOAT2 uv0;
 	XMFLOAT2 uv1;
 };
+
+struct SkinnedVertex : public VertexBase
+{
+	SkinnedVertex() = default;
+	SkinnedVertex(XMFLOAT3 position, XMFLOAT3 normal, XMFLOAT2 uv, XMUINT4 boneIndices, XMFLOAT4 boneWeights)
+		: position{ position }, normal{ normal }, uv{ uv }, boneIndices{ boneIndices }, boneWeights{ boneWeights } {
+	}
+
+	XMFLOAT3 position;
+	XMFLOAT3 normal;
+	XMFLOAT2 uv;
+	XMUINT4 boneIndices;
+	XMFLOAT4 boneWeights;
+};

@@ -118,7 +118,7 @@ void SpotLight::SetSpotPower(FLOAT spotPower)
 
 LightSystem::LightSystem(const ComPtr<ID3D12Device>& device)
 {
-	m_constantBuffer = make_unique<UploadBuffer<LightsData>>(device, (UINT)RootParameter::Light);
+	m_constantBuffer = make_unique<UploadBuffer<LightsData>>(device, (UINT)RootParameter::LightingLight);
 }
 
 void LightSystem::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList)

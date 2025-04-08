@@ -1,6 +1,7 @@
 #include "texture.h"
 #include "DDSTextureLoader12.h"
 #include "WICTextureLoader12.h" // 새로 추가 (WIC 사용 위해)
+#include "GameFramework.h"
 
 Texture::Texture(const ComPtr<ID3D12Device>& device)
 {
@@ -17,13 +18,28 @@ Texture::Texture(const ComPtr<ID3D12Device>& device,
 	if (createResourceView) CreateShaderVariable(device);
 }
 
-void Texture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void Texture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, int textureIndexOverride) const
 {
-	ID3D12DescriptorHeap* ppHeaps[] = { m_srvDescriptorHeap.Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	if (m_useGlobalHeap)
+	{
+		// 전역 디스크립터 힙 사용 시: Texture 배열이므로 첫 번째 핸들만 바인딩
+		if (!m_gpuHandles.empty())
+		{
+			auto baseHandle = gGameFramework->GetGPUHeapStart();
+			UINT descriptorSize = gGameFramework->GetDescriptorSize();
 
-	commandList->SetGraphicsRootDescriptorTable(m_rootParameterIndex,
-		m_srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+			D3D12_GPU_DESCRIPTOR_HANDLE offsetHandle = baseHandle;
+			offsetHandle.ptr += static_cast<UINT64>(textureIndexOverride) * descriptorSize;
+
+			commandList->SetGraphicsRootDescriptorTable(m_rootParameterIndex, offsetHandle);
+		}
+	}
+	else
+	{
+		ID3D12DescriptorHeap* ppHeaps[] = { m_srvDescriptorHeap.Get() };
+		commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+		commandList->SetGraphicsRootDescriptorTable(m_rootParameterIndex, m_srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	}
 }
 
 void Texture::ReleaseUploadBuffer()
@@ -70,11 +86,63 @@ void Texture::LoadTexture(const ComPtr<ID3D12Device>& device,
 	m_textureUploadBuffer.push_back(textureUploadBuffer);
 }
 
-void Texture::CreateShaderVariable(const ComPtr<ID3D12Device>& device)
+void Texture::CreateShaderVariable(const ComPtr<ID3D12Device>& device, bool useGlobalHeap)
 {
-	CreateSrvDescriptorHeap(device);
-	CreateShaderResourceView(device);
+	if (m_textures.empty()) return;
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	if (m_rootParameterIndex == RootParameter::TextureCube) {
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE; // CubeMap
+		srvDesc.TextureCube.MipLevels = 1;
+	}
+	else {
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D; // 일반 텍스처
+		srvDesc.Texture2D.MipLevels = 1;
+	}
+
+	m_useGlobalHeap = useGlobalHeap;
+	m_gpuHandles.clear();
+
+	if (useGlobalHeap)
+	{
+		UINT baseIndex = gGameFramework->GetCurrentSRVOffset(); // 시작 인덱스 저장
+
+		for (const auto& tex : m_textures)
+		{
+			srvDesc.Format = tex->GetDesc().Format;
+
+			auto [cpuHandle, gpuHandle] = gGameFramework->AllocateDescriptorHeapSlot();
+			device->CreateShaderResourceView(tex.Get(), &srvDesc, cpuHandle);
+			m_gpuHandles.push_back(gpuHandle);
+
+			// 하나의 Texture 객체 기준, 첫 번째 텍스처의 index만 저장
+			m_textureIndex = baseIndex;
+
+#ifdef _DEBUG
+			for (size_t i = 0; i < m_gpuHandles.size(); ++i)
+			{
+				char dbg[256];
+				sprintf_s(dbg, "[CreateShaderVariable] RootParamIdx=%d, GPUHandle[%llu]=%llu\n",
+					m_rootParameterIndex, i, m_gpuHandles[i].ptr);
+				OutputDebugStringA(dbg);
+			}
+
+			char dbg2[128];
+			sprintf_s(dbg2, "[Check] m_textureIndex = %d, m_gpuHandles.size() = %llu\n",
+				m_textureIndex, m_gpuHandles.size());
+			OutputDebugStringA(dbg2);
+#endif
+		}
+	}
+	else
+	{
+		CreateSrvDescriptorHeap(device);
+		CreateShaderResourceView(device);
+	}
 }
+
 
 void Texture::CreateSrvDescriptorHeap(const ComPtr<ID3D12Device>& device)
 {

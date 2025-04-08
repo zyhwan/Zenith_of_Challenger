@@ -90,6 +90,10 @@ void StartScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) co
     }
 }
 
+void StartScene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+}
+
 void StartScene::Update(FLOAT timeElapsed)
 {
     m_skybox->SetPosition(m_camera->GetEye());

@@ -22,7 +22,7 @@ public:
 	virtual void KeyboardEvent(FLOAT timeElapsed);
 	virtual void Update(FLOAT timeElapsed);
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-
+	virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	virtual void BuildObjects(const ComPtr<ID3D12Device>& device,
 		const ComPtr<ID3D12GraphicsCommandList>& commandList,
 		const ComPtr<ID3D12RootSignature>& rootSignature);

@@ -25,4 +25,6 @@ SKYBOX_PIXEL_INPUT SKYBOX_VERTEX(SKYBOX_VERTEX_INPUT input)
 float4 SKYBOX_PIXEL(SKYBOX_PIXEL_INPUT input) : SV_TARGET
 {
     return g_textureCube.Sample(g_sampler, input.lookup);
+    //return float4(1, 0, 1, 1); // 매지엔타 → 잘 나오면 렌더링은 OK, 텍스처 샘플링 문제
+    
 }

@@ -32,14 +32,17 @@ PSInput VSMain(VSInput input)
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    // 텍스처 적용: FBX의 UV 좌표 기반
-    float4 texColor = g_useTexture ? g_texture[0].Sample(g_sampler, input.TexCoord) : g_baseColor;
+    float4 texColor = g_texture[0].Sample(g_sampler, input.TexCoord);
 
+    // 색상이 너무 어두우면 fallback 색상
+    if (texColor.r + texColor.g + texColor.b < 0.01f)
+    {
+        texColor.rgb = float3(1.0f, 0.0f, 1.0f); // 매지엔타
+    }
+    
     float3 normal = normalize(input.Normal);
-
-    // 월드 위치 기준 카메라 방향 벡터
     float3 toEye = normalize(g_cameraPosition - input.WorldPos);
-
     MaterialData matData = g_material[0];
+
     return Lighting(input.WorldPos, normal, toEye, texColor, matData);
 }

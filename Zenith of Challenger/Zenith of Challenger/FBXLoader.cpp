@@ -1,6 +1,6 @@
 #include "FBXLoader.h"
 
-bool FBXLoader::LoadFBXModel(const std::string& filename)
+bool FBXLoader::LoadFBXModel(const std::string& filename, const XMMATRIX& rootTransform)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(filename,
@@ -13,15 +13,15 @@ bool FBXLoader::LoadFBXModel(const std::string& filename)
         return false;
     }
 
-    std::cout << "FBX 로드 성공 : " << filename << std::endl;
-    std::cout << "FBX 메시 개수 : " << scene->mNumMeshes << std::endl;
-
-    // Y축 기준 180도 회전 행렬 추가
-    XMMATRIX rootRotation = XMMatrixRotationY(XM_PI); // 또는 XMConvertToRadians(180.0f) XM_PI
-    XMMATRIX scaleXZ = XMMatrixScaling(5.0f, 5.0f, 5.0f); // ← XZ만 스케일 확대
-    XMMATRIX rootTransform = scaleXZ * rootRotation;
+    if (scene->HasAnimations()) {
+        std::cout << "[FBXLoader] 애니메이션 있음! (" << scene->mNumAnimations << "개)" << std::endl;
+    }
+    else {
+        std::cout << "[FBXLoader] 애니메이션 없음!" << std::endl;
+    }
 
     ProcessNode(scene->mRootNode, scene, rootTransform);
+    ProcessAnimations(scene);
 
     return true;
 }
@@ -54,49 +54,170 @@ void FBXLoader::ProcessNode(aiNode* node, const aiScene* scene, const XMMATRIX& 
     }
 }
 
-std::shared_ptr<GameObject> FBXLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, const XMMATRIX& globalTransform)
+shared_ptr<GameObject> FBXLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, const XMMATRIX& globalTransform)
 {
-    std::vector<TextureVertex> vertices;
     float scaleFactor = 1.0f;
-
-    for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-    {
-        TextureVertex vertex;
-        XMFLOAT3 pos = { -mesh->mVertices[i].x * scaleFactor, mesh->mVertices[i].y * scaleFactor, mesh->mVertices[i].z * scaleFactor };
-        XMVECTOR transformedPos = XMVector3Transform(XMLoadFloat3(&pos), globalTransform);
-        XMStoreFloat3(&vertex.position, transformedPos);
-
-        XMFLOAT3 normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
-        XMVECTOR transformedNormal = XMVector3TransformNormal(XMLoadFloat3(&normal), globalTransform);
-        XMStoreFloat3(&vertex.normal, XMVector3Normalize(transformedNormal));
-
-        vertex.uv = mesh->HasTextureCoords(0) ?
-            XMFLOAT2(mesh->mTextureCoords[0][i].x, 1.0f - mesh->mTextureCoords[0][i].y) :
-            XMFLOAT2(0.0f, 0.0f);
-
-        vertices.push_back(vertex);
-    }
-
     auto device = gGameFramework->GetDevice();
     auto commandList = gGameFramework->GetCommandList();
-    auto meshPtr = std::make_shared<Mesh<TextureVertex>>(device, commandList, vertices);
-    m_meshes.push_back(meshPtr);
 
-    // 텍스처 로드
-    auto texture = std::make_shared<Texture>(device);
-    texture->LoadTexture(device, commandList, L"Image/Base Map.dds", RootParameter::Texture);
-    texture->CreateShaderVariable(device); // <- 꼭 필요함!!
+    // [1] 애니메이션 본이 있는 경우
+    if (mesh->HasBones())
+    {
+        std::vector<SkinnedVertex> vertices(mesh->mNumVertices);
 
-    // 기본 색상은 백업 용도 (셰이더에서 텍스처 사용 시 무시됨)
-    XMFLOAT4 baseColor = XMFLOAT4(1, 1, 1, 1);
+        for (UINT i = 0; i < mesh->mNumVertices; ++i)
+        {
+            XMFLOAT3 pos = { -mesh->mVertices[i].x * scaleFactor, mesh->mVertices[i].y * scaleFactor, mesh->mVertices[i].z * scaleFactor };
+            XMStoreFloat3(&vertices[i].position, XMVector3Transform(XMLoadFloat3(&pos), globalTransform));
 
-    auto gameObject = std::make_shared<GameObject>(device);
-    gameObject->SetMesh(meshPtr);
-    gameObject->SetWorldMatrix(globalTransform);
+            XMFLOAT3 normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
+            XMStoreFloat3(&vertices[i].normal, XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&normal), globalTransform)));
 
-    gameObject->SetTexture(texture);         // 텍스처 설정
-    gameObject->SetUseTexture(true);         // 셰이더에서 g_texture 사용
-    gameObject->SetBaseColor(baseColor);     // 조명 계산 백업용
+            vertices[i].uv = mesh->HasTextureCoords(0) ?
+                XMFLOAT2(mesh->mTextureCoords[0][i].x, 1.0f - mesh->mTextureCoords[0][i].y) :
+                XMFLOAT2(0.0f, 0.0f);
 
-    return gameObject;
+            vertices[i].boneIndices = XMUINT4(0, 0, 0, 0);
+            vertices[i].boneWeights = XMFLOAT4(0.f, 0.f, 0.f, 0.f);
+        }
+
+        // 본 정보 저장
+        for (UINT i = 0; i < mesh->mNumBones; ++i)
+        {
+            aiBone* bone = mesh->mBones[i];
+            int boneIndex = i;
+
+            // [1] 본 이름
+            string boneName = bone->mName.C_Str();
+
+            // [2] 오프셋 행렬 (Inverse BindPose)
+            aiMatrix4x4 offset = bone->mOffsetMatrix;
+            offset.Transpose(); // Assimp는 row-major, DirectX는 column-major
+            XMMATRIX offsetMatrix = XMLoadFloat4x4(reinterpret_cast<XMFLOAT4X4*>(&offset));
+
+            // 저장: 본 이름 -> 오프셋 행렬, 인덱스
+            m_boneOffsets[boneName] = offsetMatrix;
+            m_boneNameToIndex[boneName] = boneIndex;
+
+            // [3] 본이 영향을 주는 정점 정보
+            for (UINT j = 0; j < bone->mNumWeights; ++j)
+            {
+                UINT vertexId = bone->mWeights[j].mVertexId;
+                float weight = bone->mWeights[j].mWeight;
+
+                if (vertices[vertexId].boneWeights.x == 0.0f) {
+                    vertices[vertexId].boneIndices.x = boneIndex;
+                    vertices[vertexId].boneWeights.x = weight;
+                }
+                else if (vertices[vertexId].boneWeights.y == 0.0f) {
+                    vertices[vertexId].boneIndices.y = boneIndex;
+                    vertices[vertexId].boneWeights.y = weight;
+                }
+                else if (vertices[vertexId].boneWeights.z == 0.0f) {
+                    vertices[vertexId].boneIndices.z = boneIndex;
+                    vertices[vertexId].boneWeights.z = weight;
+                }
+                else if (vertices[vertexId].boneWeights.w == 0.0f) {
+                    vertices[vertexId].boneIndices.w = boneIndex;
+                    vertices[vertexId].boneWeights.w = weight;
+                }
+            }
+        }
+
+        auto meshPtr = std::make_shared<Mesh<SkinnedVertex>>(device, commandList, vertices);
+        m_meshes.push_back(meshPtr);
+
+        auto gameObject = std::make_shared<GameObject>(device);
+        gameObject->SetMesh(meshPtr);
+        gameObject->SetWorldMatrix(globalTransform);
+        return gameObject;
+    }
+    // [2] 일반 메시 (텍스처 있음)
+    else
+    {
+        std::vector<TextureVertex> vertices;
+        for (UINT i = 0; i < mesh->mNumVertices; ++i)
+        {
+            TextureVertex vertex{};
+            XMFLOAT3 pos = { -mesh->mVertices[i].x * scaleFactor, mesh->mVertices[i].y * scaleFactor, mesh->mVertices[i].z * scaleFactor };
+            XMStoreFloat3(&vertex.position, XMVector3Transform(XMLoadFloat3(&pos), globalTransform));
+
+            XMFLOAT3 normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
+            XMStoreFloat3(&vertex.normal, XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&normal), globalTransform)));
+
+            vertex.uv = mesh->HasTextureCoords(0) ?
+                XMFLOAT2(mesh->mTextureCoords[0][i].x, 1.0f - mesh->mTextureCoords[0][i].y) :
+                XMFLOAT2(0.0f, 0.0f);
+
+            vertices.push_back(vertex);
+        }
+
+        auto meshPtr = std::make_shared<Mesh<TextureVertex>>(device, commandList, vertices);
+        m_meshes.push_back(meshPtr);
+
+
+        auto gameObject = std::make_shared<GameObject>(device);
+        gameObject->SetMesh(meshPtr);
+        gameObject->SetBaseColor(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
+        gameObject->SetWorldMatrix(globalTransform);
+
+        // 텍스처는 GameScene에서 일괄 할당
+        return gameObject;
+    }
+}
+
+
+void FBXLoader::ProcessAnimations(const aiScene* scene)
+{
+    if (!scene->HasAnimations()) return;
+
+    for (UINT i = 0; i < scene->mNumAnimations; ++i)
+    {
+        aiAnimation* aiAnim = scene->mAnimations[i];
+
+        AnimationClip clip;
+        clip.name = aiAnim->mName.C_Str();
+        clip.duration = static_cast<float>(aiAnim->mDuration);
+        clip.ticksPerSecond = static_cast<float>(aiAnim->mTicksPerSecond != 0 ? aiAnim->mTicksPerSecond : 30.0f);
+
+        for (UINT j = 0; j < aiAnim->mNumChannels; ++j)
+        {
+            aiNodeAnim* aiNodeAnim = aiAnim->mChannels[j];
+            BoneAnimation boneAnim;
+            boneAnim.boneName = aiNodeAnim->mNodeName.C_Str();
+
+            for (UINT k = 0; k < aiNodeAnim->mNumPositionKeys; ++k)
+            {
+                Keyframe keyframe;
+                keyframe.time = static_cast<float>(aiNodeAnim->mPositionKeys[k].mTime);
+                keyframe.position = XMFLOAT3(
+                    aiNodeAnim->mPositionKeys[k].mValue.x,
+                    aiNodeAnim->mPositionKeys[k].mValue.y,
+                    aiNodeAnim->mPositionKeys[k].mValue.z);
+
+                if (k < aiNodeAnim->mNumRotationKeys)
+                {
+                    keyframe.rotation = XMFLOAT4(
+                        aiNodeAnim->mRotationKeys[k].mValue.x,
+                        aiNodeAnim->mRotationKeys[k].mValue.y,
+                        aiNodeAnim->mRotationKeys[k].mValue.z,
+                        aiNodeAnim->mRotationKeys[k].mValue.w);
+                }
+
+                if (k < aiNodeAnim->mNumScalingKeys)
+                {
+                    keyframe.scale = XMFLOAT3(
+                        aiNodeAnim->mScalingKeys[k].mValue.x,
+                        aiNodeAnim->mScalingKeys[k].mValue.y,
+                        aiNodeAnim->mScalingKeys[k].mValue.z);
+                }
+
+                boneAnim.keyframes.push_back(keyframe);
+            }
+
+            clip.boneAnimations[boneAnim.boneName] = boneAnim;
+        }
+
+        m_animationClips.push_back(clip);
+    }
 }

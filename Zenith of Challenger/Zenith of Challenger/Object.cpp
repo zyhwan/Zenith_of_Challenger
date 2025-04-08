@@ -94,14 +94,15 @@ GameObject::GameObject(const ComPtr<ID3D12Device>& device) : Object()
 
 void GameObject::Update(FLOAT timeElapsed)
 {
-
 }
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
 	UpdateShaderVariable(commandList);
-	if (m_texture) m_texture->UpdateShaderVariable(commandList);
+
+	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureIndex);
 	if (m_material) m_material->UpdateShaderVariable(commandList);
+
 	m_mesh->Render(commandList);
 }
 
@@ -112,11 +113,13 @@ void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& c
 		XMMatrixTranspose(XMLoadFloat4x4(&m_worldMatrix)));
 	buffer.baseColor = m_baseColor;
 	buffer.useTexture = m_useTexture;
+	buffer.textureIndex = m_textureIndex;
+	buffer.padding = XMFLOAT2(0.f, 0.f);
 
 	m_constantBuffer->Copy(buffer);
 	m_constantBuffer->UpdateRootConstantBuffer(commandList);
 
-	if (m_texture) m_texture->UpdateShaderVariable(commandList);
+	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureIndex);
 	if (m_material) m_material->UpdateShaderVariable(commandList);
 }
 
@@ -143,7 +146,7 @@ void GameObject::SetBaseColor(const XMFLOAT4& color)
 
 void GameObject::SetUseTexture(bool use)
 {
-	m_useTexture = use ? TRUE : FALSE;
+	m_useTexture = use;
 }
 
 void GameObject::SetWorldMatrix(const XMMATRIX& worldMatrix)

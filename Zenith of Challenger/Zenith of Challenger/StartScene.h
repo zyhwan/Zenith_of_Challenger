@@ -13,6 +13,9 @@ public:
         const ComPtr<ID3D12RootSignature>& rootSignature) override;
 
     void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const override;
+    virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+
+
     virtual void Update(FLOAT timeElapsed);
 
     virtual void MouseEvent(HWND hWnd, FLOAT timeElapsed);

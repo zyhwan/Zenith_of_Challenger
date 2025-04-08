@@ -28,6 +28,8 @@ DETAIL_PIXEL_INPUT DETAIL_VERTEX(DETAIL_VERTEX_INPUT input)
 
 float4 DETAIL_PIXEL(DETAIL_PIXEL_INPUT input) : SV_TARGET
 {
+    //return g_texture[0].Sample(g_sampler, input.uv0); // 하나의 텍스처만 샘플링
+ 
     return lerp(g_texture[0].Sample(g_sampler, input.uv0),
     g_texture[1].Sample(g_sampler, input.uv1), 0.5f);
 }

@@ -44,6 +44,8 @@ void CGameFramework::FrameAdvance()
 {
 	m_GameTimer.Tick(60); // FPS 측정
 
+	m_srvHeapOffset = 0; // 매 프레임 디스크립터 오프셋 초기화
+
 	FLOAT deltaTime = m_GameTimer.GetElapsedTime();
 	deltaTime = max(min(deltaTime, 1.0f / 30.0f), 1.0f / 60.0f);
 
@@ -63,6 +65,25 @@ void CGameFramework::FrameAdvance()
 
 	Update();
 	Render();
+	HandleSceneTransition();  // 안전한 시점에 씬 전환
+
+	if (m_shouldTransition)
+	{
+		WaitForGpuComplete();
+		ThrowIfFailed(m_commandAllocator->Reset());
+		ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), nullptr));
+
+		std::cout << "[GameFramework] GameScene으로 전환 실행\n";
+		m_sceneManager->ChangeScene("GameScene", m_device, m_commandList, m_rootSignature);
+
+		ThrowIfFailed(m_commandList->Close()); // ← 이게 꼭 필요해
+		ID3D12CommandList* lists[] = { m_commandList.Get() };
+		m_commandQueue->ExecuteCommandLists(1, lists);
+		WaitForGpuComplete();
+
+		m_shouldTransition = false;
+	}
+
 }
 
 
@@ -110,6 +131,45 @@ UINT CGameFramework::GetWindowHeight()
 	return m_nWndClientHeight;
 }
 
+D3D12_CPU_DESCRIPTOR_HANDLE CGameFramework::GetCpuSrvHandle() const
+{
+	return m_cbvSrvUavCpuDescriptorStartHandle;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE CGameFramework::GetGpuSrvHandle() const
+{
+	return m_cbvSrvUavGpuDescriptorStartHandle;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE CGameFramework::GetGPUHeapStart() const
+{
+	return m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart();
+}
+
+UINT CGameFramework::GetDescriptorSize() const
+{
+	return m_cbvSrvUavDescriptorSize;
+}
+
+std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> CGameFramework::AllocateDescriptorHeapSlot()
+{
+	if (m_srvHeapOffset >= 1024) {
+		OutputDebugStringA("디스크립터 힙 오버플로우 발생!\n");
+		assert(false); // 디버깅 중이면 강제 중단
+	}
+
+	UINT offset = m_srvHeapOffset++;
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_cbvSrvUavCpuDescriptorStartHandle;
+	cpuHandle.ptr += offset * m_cbvSrvUavDescriptorSize;
+
+	D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = m_cbvSrvUavGpuDescriptorStartHandle;
+	gpuHandle.ptr += offset * m_cbvSrvUavDescriptorSize;
+
+	return { cpuHandle, gpuHandle };
+}
+
+
+
 void CGameFramework::InitDirect3D()
 {
 	CreateDevice();
@@ -120,6 +180,8 @@ void CGameFramework::InitDirect3D()
 	CreateRtvDsvDescriptorHeap();
 	CreateRenderTargetView();
 	CreateDepthStencilView();
+	// [추가] SRV 힙 생성
+	CreateDescriptorHeaps();
 	CreateRootSignature();
 }
 
@@ -272,49 +334,77 @@ void CGameFramework::CreateDepthStencilView()
 
 void CGameFramework::CreateRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE descriptorRange[2];
-	descriptorRange[DescriptorRange::TextureCube].Init(
-		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
-	descriptorRange[DescriptorRange::Texture].Init(
-		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0);
+	CD3DX12_DESCRIPTOR_RANGE descriptorRange[DescriptorRange::Count];
+	descriptorRange[DescriptorRange::TextureCube].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);   // t0, space0
+	descriptorRange[DescriptorRange::Texture].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 1, 0);       // t1~t2, space0
+	descriptorRange[DescriptorRange::BoneMatrix].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 11, 0); // t11
 
-	CD3DX12_ROOT_PARAMETER rootParameter[7];
-	rootParameter[RootParameter::GameObject].InitAsConstantBufferView(0, 0);
-	rootParameter[RootParameter::Camera].InitAsConstantBufferView(1, 0);
-	rootParameter[RootParameter::Material].InitAsConstantBufferView(0, 1);
-	rootParameter[RootParameter::Light].InitAsConstantBufferView(0, 2);
-	rootParameter[RootParameter::Instance].InitAsShaderResourceView(0, 1);
-	rootParameter[RootParameter::TextureCube].InitAsDescriptorTable(1,
-		&descriptorRange[DescriptorRange::TextureCube], D3D12_SHADER_VISIBILITY_PIXEL);
-	rootParameter[RootParameter::Texture].InitAsDescriptorTable(1,
-		&descriptorRange[DescriptorRange::Texture], D3D12_SHADER_VISIBILITY_PIXEL);
+	CD3DX12_ROOT_PARAMETER rootParameter[RootParameter::Count];
+	rootParameter[RootParameter::GameObject].InitAsConstantBufferView(0, 0); // b0, space0
+	rootParameter[RootParameter::Camera].InitAsConstantBufferView(1, 0);     // b1, space0
+	rootParameter[RootParameter::Material].InitAsConstantBufferView(2, 0);   // b2, space0
+	rootParameter[RootParameter::Light].InitAsConstantBufferView(3, 0);      // b3, space0
+	rootParameter[RootParameter::Instance].InitAsShaderResourceView(0, 1);   // t0, space1
 
-	CD3DX12_STATIC_SAMPLER_DESC samplerDesc;
-	samplerDesc.Init(
-		0,
-		D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-		0.0f,
-		1,
-		D3D12_COMPARISON_FUNC_ALWAYS,
-		D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
-		0.0f,
-		D3D12_FLOAT32_MAX,
-		D3D12_SHADER_VISIBILITY_PIXEL,
-		0
-	);
+	rootParameter[RootParameter::TextureCube].InitAsDescriptorTable(1, &descriptorRange[DescriptorRange::TextureCube], D3D12_SHADER_VISIBILITY_PIXEL); // t0, space0
+	rootParameter[RootParameter::Texture].InitAsDescriptorTable(1, &descriptorRange[DescriptorRange::Texture], D3D12_SHADER_VISIBILITY_PIXEL);         // t1~t2, space0
+	rootParameter[RootParameter::BoneMatrix].InitAsDescriptorTable(1, &descriptorRange[DescriptorRange::BoneMatrix], D3D12_SHADER_VISIBILITY_VERTEX);   
 
+	rootParameter[RootParameter::LightingMaterial].InitAsConstantBufferView(0, 1); // b0, space1
+	rootParameter[RootParameter::LightingLight].InitAsConstantBufferView(0, 2);    // b0, space2
+
+	CD3DX12_STATIC_SAMPLER_DESC samplerDesc(0);
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-	rootSignatureDesc.Init(_countof(rootParameter), rootParameter, 1, &samplerDesc,
+	rootSignatureDesc.Init(
+		_countof(rootParameter),
+		rootParameter,
+		1,
+		&samplerDesc,
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ComPtr<ID3DBlob> signature, error;
-	D3D12SerializeRootSignature(&rootSignatureDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
-	m_device->CreateRootSignature(0, signature->GetBufferPointer(),
-		signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature));
+	HRESULT hr = D3D12SerializeRootSignature(
+		&rootSignatureDesc,
+		D3D_ROOT_SIGNATURE_VERSION_1,
+		&signature,
+		&error
+	);
+
+	if (FAILED(hr)) {
+		OutputDebugStringA((char*)error->GetBufferPointer());
+	}
+
+	hr = m_device->CreateRootSignature(
+		0,
+		signature->GetBufferPointer(),
+		signature->GetBufferSize(),
+		IID_PPV_ARGS(&m_rootSignature)
+	);
+}
+
+
+void CGameFramework::CreateDescriptorHeaps()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = 1024; // 여유 있게 잡자
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+	ThrowIfFailed(m_device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_cbvSrvUavHeap)));
+
+	m_cbvSrvUavCpuDescriptorStartHandle = m_cbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart();
+	m_cbvSrvUavGpuDescriptorStartHandle = m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart();
+	m_cbvSrvUavDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+}
+
+void CGameFramework::HandleSceneTransition()
+{
+	auto startScene = dynamic_pointer_cast<StartScene>(m_sceneManager->GetCurrentScene());
+	if (startScene && startScene->IsStartButtonClicked())
+	{
+		m_shouldTransition = true;
+		startScene->ResetStartButtonClicked();
+	}
 }
 
 void CGameFramework::BuildObjects()
@@ -367,81 +457,69 @@ void CGameFramework::Update()
 	}
 	ProcessInput();
 
-	if (m_sceneManager) {
+	if (m_sceneManager)
+	{
 		m_sceneManager->Update(m_GameTimer.GetElapsedTime());
 
-		m_commandList->Reset(m_commandAllocator.Get(), nullptr);
-
-		// StartScene에서 씬 전환 요청이 있는지 확인
-		auto startScene = dynamic_pointer_cast<StartScene>(m_sceneManager->GetCurrentScene());
-		if (startScene && startScene->IsStartButtonClicked())
-		{
-			std::cout << "GameFramework: GameScene으로 전환 실행\n";
-			m_sceneManager->ChangeScene("GameScene", m_device, m_commandList, m_rootSignature);
-			startScene->ResetStartButtonClicked();
-		}
-
-		m_commandList->Close();
-		ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
-		m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
-
-		WaitForGpuComplete();
+		if (m_player)
+			m_player->Update(m_GameTimer.GetElapsedTime());
 	}
-
-
-	if (m_player) m_player->Update(m_GameTimer.GetElapsedTime());
 }
+
 
 void CGameFramework::Render()
 {
-	if (!m_sceneManager)
-	{
-		std::cout << "SceneManager가 설정되지 않았습니다!" << std::endl;
-		return;
-	}
+	if (!m_sceneManager) return;
 
-	m_commandAllocator->Reset();
-	m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+	ThrowIfFailed(m_commandAllocator->Reset());
 
+	ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), nullptr));
+
+	// 상태 전이: Present → RenderTarget
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 		m_renderTargets[m_frameIndex].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+		D3D12_RESOURCE_STATE_PRESENT,
+		D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+
+	if (m_sceneManager->GetCurrentScene())
+		m_sceneManager->GetCurrentScene()->PreRender(m_commandList);
+
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{
+		m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
 		static_cast<INT>(m_frameIndex), m_rtvDescriptorSize };
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle{ m_dsvHeap->GetCPUDescriptorHandleForHeapStart() };
-	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle{
+		m_dsvHeap->GetCPUDescriptorHandleForHeapStart()
+	};
+	m_commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
-	const FLOAT clearColor[]{ 0.f, 0.f, 0.f, 1.0f };
+	const FLOAT clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	m_commandList->ClearDepthStencilView(dsvHandle,
 		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-	if (m_sceneManager->GetCurrentScene())
-	{
-		m_sceneManager->Render(m_commandList);
-	}
-	else
-	{
-		std::cout << " 현재 씬이 없습니다!" << std::endl;
-	}
+	m_sceneManager->Render(m_commandList);
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 		m_renderTargets[m_frameIndex].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+		D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_RESOURCE_STATE_PRESENT));
 
-	m_commandList->Close();
-	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
-	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+	ThrowIfFailed(m_commandList->Close());
+	ID3D12CommandList* commandLists[] = { m_commandList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
-	m_swapChain->Present(1, 0);
+	ThrowIfFailed(m_swapChain->Present(1, 0));
 
 	WaitForGpuComplete();
 }
+
+
+
 
 void CGameFramework::ProcessInput()
 {
