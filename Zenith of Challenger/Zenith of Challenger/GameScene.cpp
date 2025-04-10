@@ -175,7 +175,7 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device)
 	m_lightSystem->SetLight(sunLight);
 
 	m_sun = make_unique<Sun>(sunLight);
-	m_sun->SetStrength(XMFLOAT3{ 1.0f, 1.0f, 1.0f }); //디렉셔널 라이트 세기 줄이기
+	m_sun->SetStrength(XMFLOAT3{ 1.3f, 1.3f, 1.3f }); //디렉셔널 라이트 세기 줄이기
 
 	// [1] 플레이어 모델용 스케일 행렬 설정 (크기 조절)
 	XMMATRIX playerTransform = XMMatrixScaling(0.05f, 0.05f, 0.05);
@@ -184,7 +184,7 @@ void GameScene::BuildObjects(const ComPtr<ID3D12Device>& device)
 	m_playerLoader = make_shared<FBXLoader>();
 	cout << "캐릭터 로드 중!!!!" << endl;
 
-	if (m_playerLoader->LoadFBXModel("Model/Player/Player.fbx", playerTransform))
+	if (m_playerLoader->LoadFBXModel("Model/Player/Player2.fbx", playerTransform))
 	{
 		auto& meshes = m_playerLoader->GetMeshes();
 		if (meshes.empty()) {

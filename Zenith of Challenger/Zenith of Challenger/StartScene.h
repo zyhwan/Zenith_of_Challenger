@@ -35,18 +35,20 @@ public:
 
     bool IsStartButtonClicked() const { return m_isStartButtonClicked; }
     void ResetStartButtonClicked() { m_isStartButtonClicked = false; }
+    void UpdateLoginObjects();
 
 private:
-    void DisplayLoginStatus(); // 콘솔 창에 아이디 및 비밀번호 표시하는 함수 추가
-
-    string username;  // 입력된 아이디 저장
-    string password;  // 입력된 비밀번호 저장
-    bool isTypingUsername; // 현재 아이디 입력 중인지 여부
-    bool isLoginSuccess;   // 로그인 성공 여부
+    //로그인 전용 맴버변수
+    string username;
+    string password;
+    bool isTypingUsername = true;
+    bool isLoginSuccess = false;
     bool m_isRoomSelectionActive = false; //방 선택 여부
     bool m_isMouseOnStartBtn = false;
-
     bool m_isStartButtonClicked = false;
+
+    vector<std::shared_ptr<GameObject>> m_idObjects;
+    vector<std::shared_ptr<GameObject>> m_pwObjects;
 };
 
 shared_ptr<Mesh<TextureVertex>> CreateScreenQuad(

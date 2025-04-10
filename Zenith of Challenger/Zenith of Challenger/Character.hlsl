@@ -64,13 +64,22 @@ PixelInput VSMain(VertexInput input)
 
 float4 PSMain(PixelInput input) : SV_Target
 {
-    float4 texColor = g_texture[3].Sample(g_sampler, input.texcoord);
+    float4 texColor = g_texture[4].Sample(g_sampler, input.texcoord);
 
-// 너무 어두우면 fallback 색상
+    // 너무 어두우면 fallback 색상
     if (texColor.r + texColor.g + texColor.b < 0.01f)
         texColor.rgb = float3(1, 0, 1); // 마젠타
 
-    return texColor;
+    //return texColor;
     
-    //return float4(input.texcoord.xy, 0, 1);
+    float3 normal = normalize(input.normal);
+    float3 toEye = normalize(g_cameraPosition - input.worldPos);
+    
+    MaterialData matData;
+    matData.fresnelR0 = float3(0.01f, 0.01f, 0.01f);
+    matData.roughness = 0.5f;
+    matData.ambient = float3(0.4f, 0.4f, 0.4f);
+
+    return Lighting(input.worldPos, normal, toEye, texColor, matData);
+    
 }

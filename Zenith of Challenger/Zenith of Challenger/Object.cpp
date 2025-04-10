@@ -98,6 +98,7 @@ void GameObject::Update(FLOAT timeElapsed)
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
+	if (m_shader) m_shader->UpdateShaderVariable(commandList); // ¼ÎÀÌ´õ ¼³Á¤
 	UpdateShaderVariable(commandList);
 
 	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureIndex);
@@ -137,6 +138,11 @@ void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 void GameObject::SetMaterial(const shared_ptr<Material>& material)
 {
 	m_material = material;
+}
+
+void GameObject::SetShader(const shared_ptr<Shader>& shader)
+{
+	m_shader = shader;
 }
 
 void GameObject::SetBaseColor(const XMFLOAT4& color)

@@ -32,7 +32,6 @@ void StartScene::BuildObjects(const ComPtr<ID3D12Device>& device,
     const ComPtr<ID3D12RootSignature>& rootSignature)
 {
     std::cout << "==== 로그인 화면 ====" << std::endl;
-    std::cout << "아이디를 입력하세요: " << std::endl;
 
     m_meshes.clear();
     m_textures.clear();
@@ -65,6 +64,9 @@ void StartScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) co
             {
                 obj->Render(commandList); // 배경 → 타이틀 순서대로 push_back된 상태
             }
+            for (const auto& obj : m_StartSceneObjects) obj->Render(commandList);
+            for (const auto& obj : m_idObjects) obj->Render(commandList);
+            for (const auto& obj : m_pwObjects) obj->Render(commandList);
         }
     }
     else {
@@ -97,6 +99,7 @@ void StartScene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 void StartScene::Update(FLOAT timeElapsed)
 {
     m_skybox->SetPosition(m_camera->GetEye());
+
 }
 
 void StartScene::MouseEvent(HWND hWnd, FLOAT timeElapsed)
@@ -136,63 +139,44 @@ void StartScene::MouseEvent(UINT message, LPARAM lParam)
     }
 }
 
-// 아이디와 비밀번호 입력 상태를 콘솔에 출력
-void StartScene::DisplayLoginStatus()
-{
-    std::cout << "\r아이디: " << username << (isTypingUsername ? "_" : " ")
-        << "  비밀번호: " << std::string(password.length(), '*') << (!isTypingUsername ? "_" : " ")
-        << "    " << std::flush;
-}
-
 void StartScene::KeyboardEvent(UINT message, WPARAM wParam)
 {
-    if (message == WM_KEYDOWN)
+    if (message != WM_KEYDOWN) return;
+
+    if (wParam == VK_BACK)
     {
-        if (wParam == VK_BACK) // 백스페이스 처리
-        {
-            if (isTypingUsername && !username.empty())
-                username.pop_back();
-            else if (!isTypingUsername && !password.empty())
-                password.pop_back();
-        }
-        else if (wParam == VK_TAB) // 탭을 누르면 아이디 -> 비밀번호 입력 모드 전환
-        {
-            isTypingUsername = !isTypingUsername;
-        }
-        else if (wParam == VK_RETURN) // Enter 입력 시 로그인 검증
-        {
-            if (username.empty() || password.empty())  // 빈 값 입력 방지
-            {
-                std::cout << "\n[!] 아이디와 비밀번호를 모두 입력하세요.\n";
-                return;
-            }
-
-            if (username == correctUsername && password == correctPassword)
-            {
-                isLoginSuccess = true;
-                m_isRoomSelectionActive = true; // 씬 전환 대신 방 선택 UI 활성화
-                std::cout << "\n[o] 로그인 성공! 방 선택 UI 표시.\n";
-            }
-            else
-            {
-                std::cout << "\n[x] 로그인 실패! 다시 입력하세요.\n";
-                username.clear();
-                password.clear();
-                isTypingUsername = true;
-            }
-        }
-        else if ((wParam >= 'A' && wParam <= 'Z') || (wParam >= '0' && wParam <= '9')) // 문자 및 숫자 입력 처리
-        {
-            if (isTypingUsername)
-                username += static_cast<char>(wParam);
-            else
-                password += static_cast<char>(wParam);
-        }
-
-        // 입력될 때마다 화면을 업데이트하여 실시간으로 보이게 함
-        DisplayLoginStatus();
+        if (isTypingUsername && !username.empty()) username.pop_back();
+        else if (!isTypingUsername && !password.empty()) password.pop_back();
     }
+    else if (wParam == VK_TAB)
+    {
+        isTypingUsername = !isTypingUsername;
+    }
+    else if (wParam == VK_RETURN)
+    {
+        if (username == "ADMIN" && password == "PASS")
+        {
+            isLoginSuccess = true;
+            m_isRoomSelectionActive = true; // 씬 전환
+        }
+        else
+        {
+            username.clear();
+            password.clear();
+            isTypingUsername = true;
+        }
+    }
+    else if (wParam >= 'A' && wParam <= 'Z')
+    {
+        char ch = static_cast<char>(wParam);
+        if (isTypingUsername) username += ch;
+        else password += ch;
+    }
+
+    UpdateLoginObjects(); // 화면 반영
 }
+
+
 
 //void StartScene::KeyboardEvent(FLOAT timeElapsed)
 //{
@@ -249,6 +233,32 @@ void StartScene::BuildTextures(const ComPtr<ID3D12Device>& device, const ComPtr<
     StartBar->LoadTexture(device, commandList, TEXT("Image/Select_Server/BAR.dds"), RootParameter::Texture);
     StartBar->CreateShaderVariable(device);
     m_textures.insert({ "BAR", StartBar });
+
+    // 폰트 텍스처 추가
+    auto fontTexture = make_shared<Texture>(device);
+    fontTexture->LoadTexture(device, commandList, TEXT("Image/NanumFontSprite.dds"), RootParameter::Texture);
+    fontTexture->CreateShaderVariable(device);
+    m_textures.insert({ "FONT", fontTexture });
+
+    auto tex = make_shared<Texture>(device);
+    tex->LoadTexture(device, commandList, TEXT("Image/ID.dds"), RootParameter::Texture);
+    tex->CreateShaderVariable(device);
+    m_textures.insert({ "ID_LABEL", tex });
+
+    tex = make_shared<Texture>(device);
+    tex->LoadTexture(device, commandList, TEXT("Image/PASSWORD.dds"), RootParameter::Texture);
+    tex->CreateShaderVariable(device);
+    m_textures.insert({ "PW_LABEL", tex });
+
+    tex = make_shared<Texture>(device);
+    tex->LoadTexture(device, commandList, TEXT("Image/WORD.dds"), RootParameter::Texture);
+    tex->CreateShaderVariable(device);
+    m_textures.insert({ "WORD", tex });
+
+    tex = make_shared<Texture>(device);
+    tex->LoadTexture(device, commandList, TEXT("Image/STAR.dds"), RootParameter::Texture);
+    tex->CreateShaderVariable(device);
+    m_textures.insert({ "STAR", tex });
 }
 
 void StartScene::BuildObjects(const ComPtr<ID3D12Device>& device)
@@ -327,4 +337,82 @@ void StartScene::BuildObjects(const ComPtr<ID3D12Device>& device)
     StartBar->SetUseTexture(true);
     m_startBar.push_back(StartBar);
 
+    auto idLabel = make_shared<GameObject>(device);
+    idLabel->SetMesh(CreateScreenQuad(device, gGameFramework->GetCommandList(), 0.5f, 0.2f, 0.98f));
+    idLabel->SetTexture(m_textures["ID_LABEL"]);
+    idLabel->SetUseTexture(true);
+    idLabel->SetScale(XMFLOAT3(1.1f, 1.2f, 1.1f));
+    idLabel->SetPosition(XMFLOAT3(-0.305f, -0.38f, 0.98f));
+    m_StartSceneObjects.push_back(idLabel);
+
+    auto pwLabel = make_shared<GameObject>(device);
+    pwLabel->SetMesh(CreateScreenQuad(device, gGameFramework->GetCommandList(), 0.7f, 0.25f, 0.98f));
+    pwLabel->SetTexture(m_textures["PW_LABEL"]);
+    pwLabel->SetUseTexture(true);
+    pwLabel->SetScale(XMFLOAT3(0.7f, 0.8f, 0.7f));
+    pwLabel->SetPosition(XMFLOAT3(-0.3f, -0.46f, 0.98f));
+    m_StartSceneObjects.push_back(pwLabel);
+
+}
+
+void StartScene::UpdateLoginObjects()
+{
+    m_idObjects.clear();
+    m_pwObjects.clear();
+
+    float IDStart = -0.13f;
+    float PAStart = -0.13f;
+    float charWidth = 0.5f;
+    float charHeight = 0.25f;
+
+    //// ===== 아이디 처리 =====
+    //for (size_t i = 0; i < username.size(); ++i)
+    //{
+    //    char ch = static_cast<char>(toupper(username[i]));
+    //    if (ch < 'A' || ch > 'Z') continue; // 알파벳만 처리
+
+    //    int index = ch - 'A';              // 0~25
+    //    float u = index / 26.0f;
+    //    float uStep = 1.0f / 26.0f;
+
+    //    XMFLOAT3 normal = { 0.0f, 0.0f, -1.0f };
+
+    //    vector<TextureVertex> vertices = {
+    //        { { -0.5f, +0.5f, 0.f }, normal, { u, 0.f } },
+    //        { { +0.5f, +0.5f, 0.f }, normal, { u + uStep, 0.f } },
+    //        { { -0.5f, -0.5f, 0.f }, normal, { u, 1.f } },
+    //        { { +0.5f, -0.5f, 0.f }, normal, { u + uStep, 1.f } },
+    //    };
+
+    //    auto mesh = make_shared<Mesh<TextureVertex>>(gGameFramework->GetDevice(), gGameFramework->GetCommandList(), vertices);
+    //    auto obj = make_shared<GameObject>(gGameFramework->GetDevice());
+    //    obj->SetMesh(mesh);
+    //    obj->SetTexture(m_textures["WORD"]);
+    //    obj->SetUseTexture(true);
+    //    obj->SetScale(XMFLOAT3(0.1f, 0.1f, 0.1f));
+    //    obj->SetBaseColor({ 1.f, 1.f, 1.f, 1.f });
+    //    obj->SetPosition(XMFLOAT3(IDStart + i * (0.05f), -0.18f, 0.98f));
+
+    //    m_idObjects.push_back(obj);
+    //}
+
+    for (size_t i = 0; i < username.size(); ++i)
+    {
+        auto obj = make_shared<GameObject>(gGameFramework->GetDevice());
+        obj->SetMesh(CreateScreenQuad(gGameFramework->GetDevice(), gGameFramework->GetCommandList(), charWidth, charHeight, 0.98f));
+        obj->SetTexture(m_textures["STAR"]);
+        obj->SetUseTexture(true);
+        obj->SetPosition(XMFLOAT3(IDStart + i * (0.05f), -0.37f, 0.98f));
+        m_idObjects.push_back(obj);
+    }
+
+    for (size_t i = 0; i < password.size(); ++i)
+    {
+        auto obj = make_shared<GameObject>(gGameFramework->GetDevice());
+        obj->SetMesh(CreateScreenQuad(gGameFramework->GetDevice(), gGameFramework->GetCommandList(), charWidth, charHeight, 0.98f));
+        obj->SetTexture(m_textures["STAR"]);
+        obj->SetUseTexture(true);
+        obj->SetPosition(XMFLOAT3(PAStart + i * (0.05f), -0.54f, 0.98f));
+        m_pwObjects.push_back(obj);
+    }
 }

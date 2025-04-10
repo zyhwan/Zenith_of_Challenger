@@ -100,8 +100,8 @@ void Player::Update(FLOAT timeElapsed)
     }
     else
     {
-        if (m_animationClips.contains("Idle"))
-            SetCurrentAnimation("Idle");
+        if (m_animationClips.contains("M_C3FC_ModularMale_03"))
+            SetCurrentAnimation("M_C3FC_ModularMale_03");
     }
 
     if (m_animationClips.contains(m_currentAnim))

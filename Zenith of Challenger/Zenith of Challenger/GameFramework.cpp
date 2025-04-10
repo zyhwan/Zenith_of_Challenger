@@ -76,7 +76,7 @@ void CGameFramework::FrameAdvance()
 		std::cout << "[GameFramework] GameScene으로 전환 실행\n";
 		m_sceneManager->ChangeScene("GameScene", m_device, m_commandList, m_rootSignature);
 
-		ThrowIfFailed(m_commandList->Close()); // ← 이게 꼭 필요해
+		ThrowIfFailed(m_commandList->Close()); // 이게 꼭 필요해
 		ID3D12CommandList* lists[] = { m_commandList.Get() };
 		m_commandQueue->ExecuteCommandLists(1, lists);
 		WaitForGpuComplete();
@@ -519,8 +519,6 @@ void CGameFramework::Render()
 }
 
 
-
-
 void CGameFramework::ProcessInput()
 {
 	// 메시지 큐를 이용한 입력 처리 최적화
@@ -542,31 +540,28 @@ void CGameFramework::ProcessInput()
 	}
 
 	// 키 입력이 제대로 감지되지 않을 경우 대비하여 `GetAsyncKeyState` 사용
-	for (int key = 0x08; key <= 0xFE; key++) // 백스페이스(0x08)부터 시작
+	for (int key = 0x08; key <= 0xFE; ++key)
 	{
-		SHORT keyState = GetAsyncKeyState(key);
-		if (keyState & 0x8000) // 키가 눌려 있으면
+		SHORT state = GetAsyncKeyState(key);
+
+		bool isDownNow = (state & 0x8000); // 지금 눌려있음
+		bool wasDownBefore = m_keyPressed[key];
+
+		if (isDownNow && !wasDownBefore)
 		{
+			// 새로 눌림 → 이벤트 발생
 			currentScene->KeyboardEvent(WM_KEYDOWN, key);
+			m_keyPressed[key] = true;
 		}
-		else if (keyState & 0x0001) // 키가 눌렸다가 떼졌으면
+		else if (!isDownNow && wasDownBefore)
 		{
+			// 키가 떼짐 → 상태만 업데이트 (이벤트 필요 없다면 생략 가능)
 			currentScene->KeyboardEvent(WM_KEYUP, key);
+			m_keyPressed[key] = false; 
 		}
 	}
 
-	// `PeekMessage()`로 메시지를 가져오는 기존 방식도 유지
-	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-	{
-		if (msg.message == WM_KEYDOWN || msg.message == WM_KEYUP)
-		{
-			currentScene->KeyboardEvent(msg.message, msg.wParam);
-		}
-	}
-
-	if (GetAsyncKeyState('Q') & 0x8000) {
-		exit(1);
-	}
+	if (GetAsyncKeyState('Q') & 0x8000) exit(1);
 
 	m_commandList->Close();
 	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };

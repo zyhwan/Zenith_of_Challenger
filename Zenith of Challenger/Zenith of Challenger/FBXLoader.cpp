@@ -20,6 +20,29 @@ bool FBXLoader::LoadFBXModel(const std::string& filename, const XMMATRIX& rootTr
         std::cout << "[FBXLoader] 애니메이션 없음!" << std::endl;
     }
 
+    // 1. 애니메이션 채널 확인 (한 번만 출력하면 되니까 한 곳에만 넣자)
+    for (UINT i = 0; i < scene->mNumAnimations; ++i)
+    {
+        aiAnimation* anim = scene->mAnimations[i];
+        std::cout << "애니메이션 [" << i << "] 채널 수: " << anim->mNumChannels << std::endl;
+
+        for (UINT j = 0; j < anim->mNumChannels; ++j)
+        {
+            std::cout << "  Anim channel: " << anim->mChannels[j]->mNodeName.C_Str() << std::endl;
+        }
+    }
+
+    // 2. 메시 본 이름 확인 (모든 메시의 본 이름 출력)
+    //for (UINT i = 0; i < scene->mNumMeshes; ++i)
+    //{
+    //    aiMesh* mesh = scene->mMeshes[i];
+
+    //    for (UINT j = 0; j < mesh->mNumBones; ++j)
+    //    {
+    //        std::cout << "  Bone name: " << mesh->mBones[j]->mName.C_Str() << std::endl;
+    //    }
+    //}
+
     ProcessNode(scene->mRootNode, scene, rootTransform);
     ProcessAnimations(scene);
 
@@ -43,6 +66,9 @@ void FBXLoader::ProcessNode(aiNode* node, const aiScene* scene, const XMMATRIX& 
     for (UINT i = 0; i < node->mNumMeshes; i++)
     {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+
+        //std::cout << "[Mesh] Name: " << mesh->mName.C_Str() << std::endl;
+
         auto object = ProcessMesh(mesh, scene, globalTransform);
         m_gameObjects.push_back(object);
     }

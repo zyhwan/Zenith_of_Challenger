@@ -9,6 +9,7 @@
 #include "buffer.h"
 #include "Material.h"
 #include "Lighting.h"
+#include "Shader.h"
 
 class Object abstract
 {
@@ -80,6 +81,7 @@ public:
 	void SetMesh(const shared_ptr<MeshBase>& mesh);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetMaterial(const shared_ptr<Material>& material);
+	void SetShader(const shared_ptr<Shader>& shader);
 	void SetBaseColor(const XMFLOAT4& color);            // 추가
 	void SetUseTexture(bool use);                        // 추가
 
@@ -95,6 +97,7 @@ protected:
 	shared_ptr<MeshBase> m_mesh;
 	shared_ptr<Texture> m_texture;
 	shared_ptr<Material> m_material;
+	shared_ptr<Shader> m_shader;
 
 	unique_ptr<UploadBuffer<ObjectData>> m_constantBuffer;
 

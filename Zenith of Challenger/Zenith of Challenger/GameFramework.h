@@ -128,4 +128,10 @@ private:
 
     UINT m_srvHeapOffset = 0;// 다음에 쓸 슬롯 인덱스
     bool m_shouldTransition = false;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //로그인 관련
+    std::unordered_map<int, bool> m_keyPressed; // ← 키 입력 상태 저장
+
+
 };

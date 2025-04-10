@@ -95,7 +95,7 @@ inline void Mesh<T>::CreateVertexBuffer(const ComPtr<ID3D12Device>& device,
     m_vertices = static_cast<UINT>(vertices.size());
     const UINT vertexBufferSize = m_vertices * sizeof(T);
 
-    cout << "버텍스 버퍼 생성 중... 총 버텍스 개수: " << m_vertices << endl;
+    //cout << "버텍스 버퍼 생성 중... 총 버텍스 개수: " << m_vertices << endl;
 
     device->CreateCommittedResource(
         &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
